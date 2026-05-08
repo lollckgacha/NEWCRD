@@ -250,40 +250,20 @@
         </div>
     </div>
 
-    <!-- 1. Intro Mode Selection -->
-    <div id="introScreen" class="fixed inset-0 bg-[#0a0a0f] flex items-center justify-center z-[100]">
-        <div class="menu-bg"></div>
-        <div class="flex flex-col items-center gap-12 z-10 relative w-full px-4">
-            <h1 class="text-5xl md:text-7xl text-white ea-font-black drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] text-center">천타버스 <span class="text-[#acfef8]">랜덤 달리기 & 그랑프리</span></h1>
-            
-            <div class="flex flex-col md:flex-row gap-8 w-full max-w-4xl justify-center">
-                <!-- CRD Button -->
-                <button onclick="startCRDMode()" class="ea-panel p-8 flex-1 hover:scale-105 transition-transform cursor-pointer group border border-[rgba(255,255,255,0.2)] hover:border-[#acfef8]">
-                    <img src="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD.webp" class="h-32 object-contain mx-auto mb-6 group-hover:brightness-125 transition-all">
-                    <h2 class="text-3xl ea-font-black text-white text-center">천타버스 랜덤 달리기</h2>
-                </button>
-                
-                <!-- CF1 Button -->
-                <button onclick="gotoCF1()" class="ea-panel p-8 flex-1 hover:scale-105 transition-transform cursor-pointer group border border-[rgba(255,255,255,0.2)] hover:border-[#00d2ff]">
-                    <img src="logo2.png" class="h-32 object-contain mx-auto mb-6 group-hover:brightness-125 transition-all">
-                    <h2 class="text-3xl ea-font-black text-white text-center">천타버스 그랑프리</h2>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- 2. Menu Screen (CF1 Style UI applied to CRD) -->
-    <div id="menuScreen" class="min-h-screen flex flex-col relative hidden">
+    <div id="menuScreen" class="min-h-screen flex flex-col relative">
         <div class="menu-bg"></div>
-        <header class="w-full pt-8 pb-4 px-12 flex justify-between items-end border-b border-[rgba(255,255,255,0.1)]">
+        <header class="w-full pt-8 pb-4 px-12 flex justify-between items-center border-b border-[rgba(255,255,255,0.1)]">
             <div class="flex items-center gap-6">
                 <img src="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD.webp" alt="CRD Logo" class="h-16 object-contain">
                 <h1 class="text-4xl text-white ea-font-black m-0 leading-none">천타버스 <span class="text-[#acfef8]">랜덤 달리기</span></h1>
             </div>
-            <div class="hidden lg:flex gap-8 text-gray-400 ea-font text-xl">
+            
+            <!-- 변경점: hidden lg:flex 를 flex로 변경하여 항상 우측 상단 탭이 보이도록 수정 -->
+            <div class="flex gap-4 md:gap-8 text-gray-400 ea-font text-base md:text-xl">
                 <span id="navChunta" class="text-[#acfef8] border-b-2 border-[#acfef8] pb-1 cursor-pointer transition-colors" onclick="switchRoster('chunta')">천타버스</span>
                 <span id="navOther" class="hover:text-white cursor-pointer transition-colors" onclick="switchRoster('other')">기타 컨텐츠</span>
-                <span class="hover:text-white cursor-pointer transition-colors" onclick="location.reload()">처음으로 돌아가기</span>
+                <span class="hover:text-white cursor-pointer transition-colors" onclick="location.href='https://lollckgacha.github.io/chuntaR1/'">처음으로 돌아가기</span>
             </div>
         </header>
 
@@ -423,7 +403,7 @@
         </div>
     </div>
 
-    <!-- 4. Result Screen (CF1 Style) -->
+    <!-- Result Screen (CF1 Style) -->
     <div id="resultScreen" class="hidden">
         <div id="fullCaptureArea" class="w-full max-w-6xl mx-auto ea-panel p-0 flex flex-col bg-[#0a0a0f]">
             <div class="bg-black border-b border-[rgba(255,255,255,0.1)] p-6 lg:p-10 flex justify-between items-center">
@@ -441,6 +421,18 @@
         <div class="w-full max-w-6xl mx-auto bg-black p-6 flex justify-end gap-4 border-t border-[rgba(255,255,255,0.1)]">
             <button id="captureBtn" class="ea-btn px-8 py-3 ea-font text-lg"><span>결과 텍스트 복사</span></button>
             <button id="replayBtn" class="ea-btn ea-btn-primary px-10 py-3 ea-font text-lg"><span>다시 하기</span></button>
+        </div>
+    </div>
+
+    <!-- Exit Confirm Modal -->
+    <div id="exitModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] backdrop-blur-sm">
+        <div class="ea-panel p-8 max-w-md w-full mx-4 flex flex-col gap-6 text-center border border-[rgba(255,255,255,0.2)]">
+            <h2 class="text-3xl ea-font-black text-white">달리기 종료</h2>
+            <p class="text-gray-300 text-lg">정말로 달리기를 종료하고<br>메뉴로 돌아가시겠습니까?</p>
+            <div class="flex gap-4 mt-2">
+                <button onclick="closeExitModal()" class="ea-btn flex-1 py-3 bg-[rgba(255,255,255,0.1)] border-[rgba(255,255,255,0.2)]"><span>취소</span></button>
+                <button onclick="executeExitGame()" class="ea-btn flex-1 py-3 bg-red-600/80 border-red-500 text-white hover:bg-red-500"><span>종료하기</span></button>
+            </div>
         </div>
     </div>
 
@@ -565,37 +557,44 @@
         let midBossMesh = null;
 
         // ==========================================
-        // 2. Init & Intro Logic
+        // 2. Init & Menu UI Logic
         // ==========================================
-        function startCRDMode() {
-            document.getElementById('introScreen').classList.add('hidden');
-            // 볼륨 컨트롤 제거 (인게임에서만 보여야 함)
-            document.getElementById('menuScreen').classList.remove('hidden');
-            initMenuUI();
-        }
-
-        function gotoCF1() {
-            window.location.href = 'https://lollckgacha.github.io/chuntaR1/';
-        }
 
         function forceExitGame() {
-            if(confirm("정말로 달리기를 종료하고 메뉴로 돌아가시겠습니까?")) {
-                gameRunning = false;
-                isPaused = false;
-                stopBGM();
-                document.getElementById('gameScreen').classList.add('hidden');
-                document.getElementById('menuScreen').classList.remove('hidden');
-                document.getElementById('globalVolumeControl').classList.add('hidden'); // 패널 전체 숨김
-                document.getElementById('rankingContainer').style.opacity = '0';
-                document.getElementById('sprintSplitOverlay').classList.remove('active');
-                document.getElementById('sprintCharacterDisplay').classList.remove('active');
-                document.getElementById('midbossSplitOverlay').classList.remove('active');
-                document.getElementById('midbossCharacterDisplay').classList.remove('active');
-                document.getElementById('ultimateAlert').classList.add('hidden');
-                document.getElementById('eventAlert').classList.add('hidden');
-                document.getElementById('gapAlert').classList.add('hidden');
-                document.getElementById('countdownAlert').classList.add('hidden');
+            isPaused = true;
+            document.getElementById('exitModal').classList.remove('hidden');
+        }
+
+        function closeExitModal() {
+            document.getElementById('exitModal').classList.add('hidden');
+            if (raceStarted && !raceEnded && !midBossActive && !sprintPhaseStarted) isPaused = false;
+        }
+
+        function executeExitGame() {
+            document.getElementById('exitModal').classList.add('hidden');
+            gameRunning = false;
+            isPaused = false;
+            stopBGM();
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('menuScreen').classList.remove('hidden');
+            document.getElementById('globalVolumeControl').classList.add('hidden'); // 패널 전체 숨김
+            document.getElementById('rankingContainer').style.opacity = '0';
+            document.getElementById('sprintSplitOverlay').classList.remove('active');
+            document.getElementById('sprintCharacterDisplay').classList.remove('active');
+            document.getElementById('midbossSplitOverlay').classList.remove('active');
+            document.getElementById('midbossCharacterDisplay').classList.remove('active');
+            document.getElementById('ultimateAlert').classList.add('hidden');
+            document.getElementById('eventAlert').classList.add('hidden');
+            document.getElementById('gapAlert').classList.add('hidden');
+            document.getElementById('countdownAlert').classList.add('hidden');
+            
+            if (scene) {
+                scene.traverse(o => {
+                    if (o.geometry) o.geometry.dispose();
+                    if (o.material) { if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material.dispose(); }
+                });
             }
+            if (renderer) renderer.clear();
         }
 
         function initMenuUI() {
@@ -1600,13 +1599,46 @@
                 if(a.finished) return -1; if(b.finished) return 1;
                 return b.position - a.position;
             });
+            
+            let teamAssignments = [];
+            if (isTeamMode) {
+                let total = sr.length;
+                let sizes = new Array(teamCount).fill(Math.floor(total / teamCount));
+                for (let i = 0; i < total % teamCount; i++) sizes[i]++;
+                let left = 0; let right = total - 1; let placeLeft = true;
+                for (let t = 0; t < teamCount; t++) {
+                    while (sizes[t] > 0) {
+                        if (placeLeft) teamAssignments[left++] = t;
+                        else teamAssignments[right--] = t;
+                        placeLeft = !placeLeft;
+                        sizes[t]--;
+                    }
+                }
+            }
+
             const rL = document.getElementById('rankingList'); rL.innerHTML='';
             sr.forEach((r, i) => {
-                const rank = i+1; const isQ = (!isTeamMode && rank<=passCount);
-                if(r.finished && isQ) confirmedRanks.add(r.member.id);
+                const rank = i+1; 
                 const d = document.createElement('div');
-                const confCls = confirmedRanks.has(r.member.id) ? 'ranking-item-confirmed' : '';
-                d.className = `ranking-item flex items-center gap-1 p-1 text-sm ${isQ?'bg-green-900/40':'bg-[rgba(255,255,255,0.05)]'} ${confCls}`;
+                let baseClasses = 'ranking-item flex items-center gap-1 p-1 text-sm ';
+                
+                if (isTeamMode) {
+                    const tIdx = teamAssignments[i];
+                    const hex = teamColors[tIdx];
+                    const red = parseInt(hex.slice(1, 3), 16);
+                    const green = parseInt(hex.slice(3, 5), 16);
+                    const blue = parseInt(hex.slice(5, 7), 16);
+                    // 팀 색상을 rgba로 변환하여 연한 배경색 및 테두리 설정
+                    d.className = baseClasses;
+                    d.style.backgroundColor = `rgba(${red}, ${green}, ${blue}, 0.25)`;
+                    d.style.border = `1px solid rgba(${red}, ${green}, ${blue}, 0.3)`;
+                } else {
+                    const isQ = rank<=passCount;
+                    if(r.finished && isQ) confirmedRanks.add(r.member.id);
+                    const confCls = confirmedRanks.has(r.member.id) ? 'ranking-item-confirmed' : '';
+                    d.className = baseClasses + (isQ ? 'bg-green-900/40 ' : 'bg-[rgba(255,255,255,0.05)] ') + confCls;
+                }
+
                 d.innerHTML = `<span class="w-6 text-center font-bold text-sm" style="color:${r.member.color}">${rank}</span><img src="${r.member.imgPng||r.member.img}" crossorigin="anonymous" class="w-6 h-6 rounded-full object-cover"><span class="text-xs font-bold truncate" style="color:${r.member.color}">${r.member.name}</span><span style="width:0.5em;"></span>`;
                 rL.appendChild(d);
             });
@@ -1660,6 +1692,10 @@
             
             const sorted = [...runners].sort((a,b) => a.finishTime - b.finishTime);
             
+            // 이전 합격/탈락자 데이터 초기화 (이번 판의 결과로 덮어쓰기 위함)
+            lastRacePassedIds.clear();
+            lastRaceFailedIds.clear();
+            
             let teamAssignments = [];
             if (isTeamMode) {
                 let total = sorted.length; let sizes = new Array(teamCount).fill(Math.floor(total/teamCount));
@@ -1672,8 +1708,23 @@
 
             sorted.forEach((r, i) => {
                 r.finalRank = i+1;
-                if(isTeamMode) { r.assignedTeam = teamNames[teamAssignments[i]]; r.assignedTeamColor = teamColors[teamAssignments[i]]; r.teamIndex = teamAssignments[i]; }
-                else { r.isQualified = r.finalRank <= passCount; }
+                if(isTeamMode) { 
+                    r.assignedTeam = teamNames[teamAssignments[i]]; 
+                    r.assignedTeamColor = teamColors[teamAssignments[i]]; 
+                    r.teamIndex = teamAssignments[i]; 
+                } else { 
+                    r.isQualified = r.finalRank <= passCount; 
+                    if (r.isQualified) {
+                        lastRacePassedIds.add(r.member.id);
+                        // 기타모드이면서 서바이벌일 때 합격자를 자동으로 팀 대기열로 넘겨줌
+                        if (currentRosterMode === 'other') {
+                            const matchedMem = membersOther.find(mx => mx.id === r.member.id);
+                            if (matchedMem) matchedMem.pool = 'team';
+                        }
+                    } else {
+                        lastRaceFailedIds.add(r.member.id);
+                    }
+                }
             });
 
             let displaySorted = [...sorted];
@@ -1722,6 +1773,31 @@
         function captureResultsText() {
             const span = document.querySelector('#captureBtn span'); span.textContent = '복사 중...';
             const sr = [...runners].sort((a,b)=>isTeamMode ? (a.teamIndex-b.teamIndex || a.finalRank-b.finalRank) : a.finalRank-b.finalRank);
+            
+            // 동일한 스네이크 팀 배정 로직 반영
+            let teamAssignments = [];
+            if (isTeamMode) {
+                let total = sr.length;
+                let sizes = new Array(teamCount).fill(Math.floor(total / teamCount));
+                for (let i = 0; i < total % teamCount; i++) sizes[i]++;
+                let left = 0; let right = total - 1; let placeLeft = true;
+                for (let t = 0; t < teamCount; t++) {
+                    while (sizes[t] > 0) {
+                        if (placeLeft) teamAssignments[left++] = t;
+                        else teamAssignments[right--] = t;
+                        placeLeft = !placeLeft;
+                        sizes[t]--;
+                    }
+                }
+            }
+            
+            sr.forEach((r, i) => {
+                if (isTeamMode) {
+                    let teamIndex = teamAssignments[i];
+                    r.assignedTeam = teamNames[teamIndex];
+                }
+            });
+
             let txt = isTeamMode && teamCount>2 ? "순위\t드라이버\t팀\n" : "순위\t드라이버\t기록\t상태\n";
             sr.forEach(r => {
                 if(isTeamMode && teamCount>2) txt+=`${r.finalRank}\t${r.member.name}\t${r.assignedTeam}\n`;
@@ -1734,11 +1810,31 @@
 
         function returnToMenu() {
             document.getElementById('resultScreen').classList.add('hidden');
-            // 인게임 전용 컨트롤이므로 리턴 시 숨김 유지
             document.getElementById('menuScreen').classList.remove('hidden');
+            
+            // 상태 초기화
+            passCount = null;
+            selectedMembers.clear();
+            
             if (currentRosterMode === 'other') createMemberGrid();
             updateSelectionUI();
+
+            // 이전 합격/탈락자 데이터 버튼 가시성 업데이트
+            if (currentRosterMode === 'chunta') {
+                if(!isTeamMode && (lastRacePassedIds.size > 0 || lastRaceFailedIds.size > 0)) {
+                    document.getElementById('selectPassedBtn').classList.remove('hidden');
+                    document.getElementById('selectFailedBtn').classList.remove('hidden');
+                } else if (isTeamMode) {
+                    document.getElementById('selectPassedBtn').classList.add('hidden');
+                    document.getElementById('selectFailedBtn').classList.add('hidden');
+                }
+            }
         }
+
+        // 페이지 로드 시 바로 메뉴 초기화 실행
+        window.addEventListener('DOMContentLoaded', () => {
+            initMenuUI();
+        });
 
     </script>
 </body>
