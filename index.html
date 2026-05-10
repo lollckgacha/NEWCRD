@@ -475,8 +475,8 @@
         ];
 
         let membersOther = [];
-        const ACTIVE_SURVIVAL = ['돗챠', '카푸'];
-        const ACTIVE_TEAM = ['천양', '마다옴', '캬앙', '달타', '난워니', '뢴트게늄', '김웰로', '파니', '카나시', '최또', '나리'];
+        const ACTIVE_SURVIVAL = [];
+        const ACTIVE_TEAM = [];
 
         ACTIVE_SURVIVAL.forEach(input => {
             let found = ALL_OTHER_MEMBERS.find(m => m.id === input || m.name === input) || membersChuntaverse.find(m => m.id === input || m.name === input);
@@ -1043,7 +1043,9 @@
             const h = 512; 
             const ctx = canvas.getContext('2d');
             const adUrls = [
-                'https://stimg.sooplive.com/NORMAL_BBS/3/12240993/400469ea5c8310b52.png'
+                'https://stimg.sooplive.com/NORMAL_BBS/3/12240993/400469ea5c8310b52.png',
+                'https://stimg.sooplive.com/NORMAL_BBS/3/12240993/210869fc32ffe7b23.png',
+                'https://stimg.sooplive.com/NORMAL_BBS/3/12240993/57946a008d9623d75.png'
             ];
             
             const images = [];
