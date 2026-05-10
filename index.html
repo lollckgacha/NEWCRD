@@ -261,7 +261,6 @@
                 <h1 class="text-4xl text-white ea-font-black m-0 leading-none">천타버스 <span class="text-[#acfef8]">랜덤 달리기</span></h1>
             </div>
             
-            <!-- 변경점: hidden lg:flex 를 flex로 변경하여 항상 우측 상단 탭이 보이도록 수정 -->
             <div class="flex gap-4 md:gap-8 text-gray-400 ea-font text-base md:text-xl">
                 <span id="navChunta" class="text-[#acfef8] border-b-2 border-[#acfef8] pb-1 cursor-pointer transition-colors" onclick="switchRoster('chunta')">천타버스</span>
                 <span id="navOther" class="hover:text-white cursor-pointer transition-colors" onclick="switchRoster('other')">기타 컨텐츠</span>
@@ -1062,28 +1061,35 @@
             function draw() {
                 const validImages = images.filter(img => img !== null);
                 if (validImages.length > 0) {
-                    const img = validImages[0];
-                    const w = (img.width / img.height) * h;
+                    let currentX = 0;
+                    // 각 패널(이미지와 텍스트)의 너비 계산
+                    const panelWidths = validImages.map(img => (img.width / img.height) * h);
+                    const totalWidth = panelWidths.reduce((sum, width) => sum + width * 2, 0); // 각 이미지마다 텍스트 패널(동일 너비) 한 쌍 추가
                     
-                    // 4개의 패널을 이어붙인 텍스처를 만듭니다.
-                    canvas.width = w * 4;
+                    canvas.width = totalWidth;
                     canvas.height = h;
-                    
-                    // 1. 원본 이미지
-                    ctx.drawImage(img, 0, 0, w, h);
-                    
-                    // 2. CF1 스타일 텍스트 광고판
-                    ctx.fillStyle = '#111'; ctx.fillRect(w, 0, w, h);
-                    ctx.fillStyle = '#acfef8'; ctx.font = "italic 900 95px 'Rajdhani', sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle';
-                    ctx.fillText('CHUNTAVERSE', w + w/2, h/2);
-                    
-                    // 3. 원본 이미지
-                    ctx.drawImage(img, w*2, 0, w, h);
-                    
-                    // 4. CF1 스타일 텍스트 광고판 2
-                    ctx.fillStyle = '#111'; ctx.fillRect(w*3, 0, w, h);
-                    ctx.fillStyle = '#00d2ff'; ctx.font = "italic 900 95px 'Rajdhani', sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle';
-                    ctx.fillText('CHUNTAVERSE', w*3 + w/2, h/2);
+
+                    const textColors = ['#acfef8', '#00d2ff', '#ffc462', '#ff5a4d'];
+
+                    validImages.forEach((img, i) => {
+                        const pw = panelWidths[i];
+                        
+                        // 1. 원본 이미지
+                        ctx.drawImage(img, currentX, 0, pw, h);
+                        currentX += pw;
+                        
+                        // 2. CF1 스타일 텍스트 광고판
+                        ctx.fillStyle = '#111'; 
+                        ctx.fillRect(currentX, 0, pw, h);
+                        
+                        ctx.fillStyle = textColors[i % textColors.length]; 
+                        ctx.font = "italic 900 95px 'Rajdhani', sans-serif"; 
+                        ctx.textAlign = 'center'; 
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('CHUNTAVERSE', currentX + pw/2, h/2);
+                        
+                        currentX += pw;
+                    });
                 } else {
                     canvas.width = 1024; canvas.height = 512;
                     ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0,0,1024,512);
