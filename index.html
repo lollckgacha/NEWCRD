@@ -1059,10 +1059,9 @@
                 const validImages = images.filter(img => img !== null);
                 if (validImages.length > 0) {
                     let currentX = 0;
-                    // 각 패널(이미지와 텍스트)의 너비 계산
                     const panelWidths = validImages.map(img => (img.width / img.height) * h);
-                    const totalWidth = panelWidths.reduce((sum, width) => sum + width * 2, 0); // 각 이미지마다 텍스트 패널(동일 너비) 한 쌍 추가
-                    
+                    const totalWidth = panelWidths.reduce((sum, w) => sum + w, 0);
+
                     canvas.width = totalWidth;
                     canvas.height = h;
 
@@ -1070,21 +1069,24 @@
 
                     validImages.forEach((img, i) => {
                         const pw = panelWidths[i];
-                        
-                        // 1. 원본 이미지
+
+                        // 이미지 그리기
                         ctx.drawImage(img, currentX, 0, pw, h);
-                        currentX += pw;
-                        
-                        // 2. CF1 스타일 텍스트 광고판
-                        ctx.fillStyle = '#111'; 
+
+                        // 하단 그라디언트 오버레이
+                        const grad = ctx.createLinearGradient(currentX, h * 0.5, currentX, h);
+                        grad.addColorStop(0, 'rgba(0,0,0,0)');
+                        grad.addColorStop(1, 'rgba(0,0,0,0.75)');
+                        ctx.fillStyle = grad;
                         ctx.fillRect(currentX, 0, pw, h);
-                        
-                        ctx.fillStyle = textColors[i % textColors.length]; 
-                        ctx.font = "italic 900 95px 'Rajdhani', sans-serif"; 
-                        ctx.textAlign = 'center'; 
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText('CHUNTAVERSE', currentX + pw/2, h/2);
-                        
+
+                        // 텍스트를 이미지 하단에 배치
+                        ctx.fillStyle = textColors[i % textColors.length];
+                        ctx.font = "italic bold 72px sans-serif";
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText('CHUNTAVERSE', currentX + pw / 2, h - 20);
+
                         currentX += pw;
                     });
                 } else {
@@ -1321,6 +1323,64 @@
             setTimeout(() => activateMidBossEffect(), 3000);
         }
 
+        // 이벤트 발동 시 전체 러너를 앞에서 보여주며 영향받는 멤버를 링으로 하이라이트
+        function showFrontOverview(affectedRunners, durationMs, callback) {
+            const allActive = runners.filter(r => !r.finished);
+            const avgZ = allActive.reduce((s, r) => s + r.position, 0) / (allActive.length || 1);
+            const laneCount = allActive.length;
+            const halfW = (laneCount * 6) / 2 + 6;
+            const fov = camera.fov * (Math.PI / 180);
+            const distNeeded = halfW / Math.tan(fov / 2);
+
+            // 러너들 앞쪽(진행 방향 반대)에서 바라보는 카메라 위치
+            const targetPos = new THREE.Vector3(0, Math.max(18, distNeeded * 0.6), avgZ - Math.max(30, distNeeded));
+            const targetLook = new THREE.Vector3(0, 2, avgZ);
+            const startPos = camera.position.clone();
+            const startLook = camera.lookAtVector.clone();
+            const startT = performance.now();
+
+            // 영향받는 멤버 발 아래 컬러 링 표시
+            const highlights = affectedRunners.map(r => {
+                const ring = new THREE.Mesh(
+                    new THREE.RingGeometry(1.8, 2.5, 32),
+                    new THREE.MeshBasicMaterial({ color: new THREE.Color(r.member.color), transparent: true, opacity: 0.95, side: THREE.DoubleSide })
+                );
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.set(r.laneX, 0.2, r.position);
+                scene.add(ring);
+                return ring;
+            });
+
+            // 링 펄스 애니메이션
+            let pulseT = performance.now();
+            let pulseFrame;
+            function pulse() {
+                const elapsed = (performance.now() - pulseT) / 500;
+                const scale = 1 + Math.sin(elapsed * Math.PI * 2) * 0.15;
+                highlights.forEach(h => h.scale.setScalar(scale));
+                renderer.render(scene, camera);
+                pulseFrame = requestAnimationFrame(pulse);
+            }
+
+            function lerpCam() {
+                const p = Math.min((performance.now() - startT) / 700, 1);
+                const e = 1 - Math.pow(1 - p, 3);
+                camera.position.lerpVectors(startPos, targetPos, e);
+                camera.lookAtVector.lerpVectors(startLook, targetLook, e);
+                camera.lookAt(camera.lookAtVector);
+                renderer.render(scene, camera);
+                if (p < 1) requestAnimationFrame(lerpCam);
+                else pulse();
+            }
+            lerpCam();
+
+            setTimeout(() => {
+                cancelAnimationFrame(pulseFrame);
+                highlights.forEach(h => scene.remove(h));
+                callback();
+            }, durationMs);
+        }
+
         function activateMidBossEffect() {
             document.getElementById('midbossSplitOverlay').classList.remove('active');
             document.getElementById('midbossCharacterDisplay').classList.remove('active');
@@ -1332,66 +1392,76 @@
 
             if (currentMidBoss.id === 'authority') {
                 let n = elRun.length === 1 ? 1 : (Math.random() < 0.5 ? 3 : (Math.random() < 0.8 ? 2 : 1)); n = Math.min(n, elRun.length);
-                const tr = [...elRun].sort(()=>Math.random()-0.5).slice(0, n); let idx=0;
-                function nxt() {
-                    if (idx >= tr.length) { isPaused = false; midBossActive = false; return; }
-                    const r = tr[idx];
-                    document.getElementById('midbossAlert').querySelector('div').innerHTML = `<span style="color:${r.member.color}">${r.member.name}</span> <span style="color:${r.member.color}">천타버스 나가 줄 수 있어?</span>`;
-                    document.getElementById('midbossAlert').classList.remove('hidden');
-                    const cPos = new THREE.Vector3(r.laneX+4, 5, r.position+8); const cLook = new THREE.Vector3(r.laneX, 2, r.position);
-                    const sPos = camera.position.clone(); const sLook = camera.lookAtVector.clone(); const sT = performance.now();
-                    function animC() {
-                        const p = Math.min((performance.now()-sT)/500, 1);
-                        camera.position.lerpVectors(sPos, cPos, p); camera.lookAtVector.lerpVectors(sLook, cLook, p); camera.lookAt(camera.lookAtVector);
-                        renderer.render(scene, camera);
-                        if(p<1) requestAnimationFrame(animC);
-                        else {
-                            r.isPushedBack = true; r.pushBackStartPos = r.position; r.pushBackTarget = Math.max(0, r.position - (15+Math.random()*10));
-                            const pT = performance.now();
-                            function animP() {
-                                const pp = Math.min((performance.now()-pT)/1000, 1); const eased = 1-Math.pow(1-pp,3);
-                                r.position = r.pushBackStartPos + (r.pushBackTarget - r.pushBackStartPos) * eased; r.mesh.position.z = r.position;
-                                r.mesh.rotation.z = Math.sin(pp*Math.PI*4)*0.3*(1-pp);
-                                camera.lookAtVector.set(r.laneX, 2, r.position); camera.lookAt(camera.lookAtVector); camera.position.z = r.position+8;
-                                renderer.render(scene, camera);
-                                if(pp<1) requestAnimationFrame(animP);
-                                else { r.isPushedBack = false; r.mesh.rotation.z = 0; setTimeout(()=>{ document.getElementById('midbossAlert').classList.add('hidden'); idx++; setTimeout(nxt, 500); }, 500); }
+                const tr = [...elRun].sort(()=>Math.random()-0.5).slice(0, n);
+
+                showFrontOverview(tr, 2200, () => {
+                    let idx = 0;
+                    function nxt() {
+                        if (idx >= tr.length) { isPaused = false; midBossActive = false; return; }
+                        const r = tr[idx];
+                        document.getElementById('midbossAlert').querySelector('div').innerHTML = `<span style="color:${r.member.color}">${r.member.name}</span> <span style="color:${r.member.color}">천타버스 나가 줄 수 있어?</span>`;
+                        document.getElementById('midbossAlert').classList.remove('hidden');
+                        const cPos = new THREE.Vector3(r.laneX+4, 5, r.position+8); const cLook = new THREE.Vector3(r.laneX, 2, r.position);
+                        const sPos = camera.position.clone(); const sLook = camera.lookAtVector.clone(); const sT = performance.now();
+                        function animC() {
+                            const p = Math.min((performance.now()-sT)/500, 1);
+                            camera.position.lerpVectors(sPos, cPos, p); camera.lookAtVector.lerpVectors(sLook, cLook, p); camera.lookAt(camera.lookAtVector);
+                            renderer.render(scene, camera);
+                            if(p<1) requestAnimationFrame(animC);
+                            else {
+                                r.isPushedBack = true; r.pushBackStartPos = r.position; r.pushBackTarget = Math.max(0, r.position - (15+Math.random()*10));
+                                const pT = performance.now();
+                                function animP() {
+                                    const pp = Math.min((performance.now()-pT)/1000, 1); const eased = 1-Math.pow(1-pp,3);
+                                    r.position = r.pushBackStartPos + (r.pushBackTarget - r.pushBackStartPos) * eased; r.mesh.position.z = r.position;
+                                    r.mesh.rotation.z = Math.sin(pp*Math.PI*4)*0.3*(1-pp);
+                                    camera.lookAtVector.set(r.laneX, 2, r.position); camera.lookAt(camera.lookAtVector); camera.position.z = r.position+8;
+                                    renderer.render(scene, camera);
+                                    if(pp<1) requestAnimationFrame(animP);
+                                    else { r.isPushedBack = false; r.mesh.rotation.z = 0; setTimeout(()=>{ document.getElementById('midbossAlert').classList.add('hidden'); idx++; setTimeout(nxt, 500); }, 500); }
+                                }
+                                animP();
                             }
-                            animP();
                         }
+                        animC();
                     }
-                    animC();
-                }
-                nxt();
+                    nxt();
+                });
             } else if (currentMidBoss.id === 'buo') {
                 const tr = [...elRun].sort(()=>Math.random()-0.5).slice(0, Math.max(1, Math.ceil(elRun.length/2)));
-                document.getElementById('midbossAlert').querySelector('div').innerHTML = tr.map(r=>`<span style="color:${r.member.color}">${r.member.name}</span>`).join('&nbsp;') + ` <span style="color:#ddd">보호막 획득!</span>`;
-                document.getElementById('midbossAlert').classList.remove('hidden');
-                let done=0;
-                tr.forEach(r => {
-                    r.hasShield=true; r.shieldCharges=3; r.shieldMeshes=[]; r.shieldProcessedObs=new Set();
-                    for(let i=0; i<3; i++) {
-                        const m = new THREE.Mesh(new THREE.SphereGeometry(2+i*0.4, 16, 16), new THREE.MeshBasicMaterial({color:0xffa500, transparent:true, opacity:0.25-i*0.05, side:THREE.DoubleSide, depthWrite:false}));
-                        m.position.y=1.5; m.scale.set(0,0,0); r.mesh.add(m); r.shieldMeshes.push(m);
-                        const s=performance.now();
-                        function aS() { const p=Math.min((performance.now()-s)/400,1); const scl=p<1?p*1.1:1; m.scale.setScalar(scl); renderer.render(scene,camera); if(p<1) requestAnimationFrame(aS); }
-                        aS();
-                    }
-                    setTimeout(()=>{ done++; if(done===tr.length) { document.getElementById('midbossAlert').classList.add('hidden'); isPaused=false; midBossActive=false; } }, 1000);
+
+                showFrontOverview(tr, 2200, () => {
+                    document.getElementById('midbossAlert').querySelector('div').innerHTML = tr.map(r=>`<span style="color:${r.member.color}">${r.member.name}</span>`).join('&nbsp;') + ` <span style="color:#ddd">보호막 획득!</span>`;
+                    document.getElementById('midbossAlert').classList.remove('hidden');
+                    let done=0;
+                    tr.forEach(r => {
+                        r.hasShield=true; r.shieldCharges=3; r.shieldMeshes=[]; r.shieldProcessedObs=new Set();
+                        for(let i=0; i<3; i++) {
+                            const m = new THREE.Mesh(new THREE.SphereGeometry(2+i*0.4, 16, 16), new THREE.MeshBasicMaterial({color:0xffa500, transparent:true, opacity:0.25-i*0.05, side:THREE.DoubleSide, depthWrite:false}));
+                            m.position.y=1.5; m.scale.set(0,0,0); r.mesh.add(m); r.shieldMeshes.push(m);
+                            const s=performance.now();
+                            function aS() { const p=Math.min((performance.now()-s)/400,1); const scl=p<1?p*1.1:1; m.scale.setScalar(scl); renderer.render(scene,camera); if(p<1) requestAnimationFrame(aS); }
+                            aS();
+                        }
+                        setTimeout(()=>{ done++; if(done===tr.length) { document.getElementById('midbossAlert').classList.add('hidden'); isPaused=false; midBossActive=false; } }, 1000);
+                    });
                 });
             } else {
                 const imR = elRun[Math.floor(Math.random()*elRun.length)]; const tr = elRun.filter(r=>r!==imR);
-                document.getElementById('lightningFlash').classList.remove('hidden'); setTimeout(()=>document.getElementById('lightningFlash').classList.add('hidden'), 100);
-                document.getElementById('midbossAlert').querySelector('div').innerHTML = `<span style="color:${imR.member.color}">${imR.member.name}</span> <span style="color:#ddd">제외 전원 감전!</span>`;
-                document.getElementById('midbossAlert').classList.remove('hidden');
-                tr.forEach(r => {
-                    r.isElectrocuted=true; r.electrocuteTimer=2.0;
-                    const grp=new THREE.Group(); grp.position.set(r.laneX, 0, r.position);
-                    const pts=[]; for(let i=0; i<=10; i++) pts.push(new THREE.Vector3((Math.random()-0.5)*1.2, 25-(22*i/10), (Math.random()-0.5)*1.2));
-                    grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, 0.12, 6, false), new THREE.MeshBasicMaterial({color:0xff0000})));
-                    scene.add(grp); setTimeout(()=>scene.remove(grp), 300);
+
+                showFrontOverview(tr, 2200, () => {
+                    document.getElementById('lightningFlash').classList.remove('hidden'); setTimeout(()=>document.getElementById('lightningFlash').classList.add('hidden'), 100);
+                    document.getElementById('midbossAlert').querySelector('div').innerHTML = `<span style="color:${imR.member.color}">${imR.member.name}</span> <span style="color:#ddd">제외 전원 감전!</span>`;
+                    document.getElementById('midbossAlert').classList.remove('hidden');
+                    tr.forEach(r => {
+                        r.isElectrocuted=true; r.electrocuteTimer=2.0;
+                        const grp=new THREE.Group(); grp.position.set(r.laneX, 0, r.position);
+                        const pts=[]; for(let i=0; i<=10; i++) pts.push(new THREE.Vector3((Math.random()-0.5)*1.2, 25-(22*i/10), (Math.random()-0.5)*1.2));
+                        grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, 0.12, 6, false), new THREE.MeshBasicMaterial({color:0xff0000})));
+                        scene.add(grp); setTimeout(()=>scene.remove(grp), 300);
+                    });
+                    setTimeout(()=> { document.getElementById('midbossAlert').classList.add('hidden'); isPaused=false; midBossActive=false; }, 2000);
                 });
-                setTimeout(()=> { document.getElementById('midbossAlert').classList.add('hidden'); isPaused=false; midBossActive=false; }, 2000);
             }
         }
 
