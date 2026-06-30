@@ -1415,7 +1415,7 @@
             sprintRunners=[sR];
 
             document.getElementById('sprintSplitOverlay').classList.add('active');
-            document.getElementById('sprintCharacterDisplay').innerHTML = `<img class="sprint-character-image" src="${sR.member.imgPng||sR.member.img}"><div class="sprint-character-text" style="color:${sR.member.color}">${sR.member.name} 막판 스퍼트!</div>`;
+            document.getElementById('sprintCharacterDisplay').innerHTML = `<img class="sprint-character-image" src="${sR.member.imgWebp||sR.member.imgJpg||sR.member.img||''}"><div class="sprint-character-text" style="color:${sR.member.color}">${sR.member.name} 막판 스퍼트!</div>`;
             document.getElementById('sprintCharacterDisplay').classList.add('active');
             if(bgm) bgm.volume *= 0.3;
 
