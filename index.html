@@ -20,7 +20,7 @@
             --ea-panel: rgba(20, 20, 25, 0.85);
             --ea-border: rgba(255, 255, 255, 0.15);
         }
-        body { font-family: 'Noto Sans KR', 'Segoe UI', sans-serif; background-color: var(--ea-dark); color: white; margin: 0; padding: 0; overflow-x: hidden; }
+        body { font-family: 'Noto Sans KR', 'Segoe UIa', sans-serif; background-color: var(--ea-dark); color: white; margin: 0; padding: 0; overflow-x: hidden; }
         .ea-font { font-family: 'Rajdhani', 'Noto Sans KR', sans-serif; font-style: italic; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
         .ea-font-black { font-family: 'Noto Sans KR', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
         
@@ -1057,48 +1057,53 @@
             
             function draw() {
                 const validImages = images.filter(img => img !== null);
-                if (validImages.length > 0) {
-                    let currentX = 0;
-                    const panelWidths = validImages.map(img => (img.width / img.height) * h);
-                    const totalWidth = panelWidths.reduce((sum, w) => sum + w, 0);
 
-                    canvas.width = totalWidth;
-                    canvas.height = h;
-
-                    const textColors = ['#acfef8', '#00d2ff', '#ffc462', '#ff5a4d'];
-
-                    validImages.forEach((img, i) => {
-                        const pw = panelWidths[i];
-
-                        // 이미지 그리기
-                        ctx.drawImage(img, currentX, 0, pw, h);
-
-                        // 하단 그라디언트 오버레이
-                        const grad = ctx.createLinearGradient(currentX, h * 0.5, currentX, h);
-                        grad.addColorStop(0, 'rgba(0,0,0,0)');
-                        grad.addColorStop(1, 'rgba(0,0,0,0.75)');
-                        ctx.fillStyle = grad;
-                        ctx.fillRect(currentX, 0, pw, h);
-
-                        // 텍스트를 이미지 하단에 배치
-                        ctx.fillStyle = textColors[i % textColors.length];
-                        ctx.font = "italic bold 72px sans-serif";
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'bottom';
-                        ctx.fillText('CHUNTAVERSE', currentX + pw / 2, h - 20);
-
-                        currentX += pw;
-                    });
-                } else {
-                    canvas.width = 1024; canvas.height = 512;
-                    ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0,0,1024,512);
-                    ctx.fillStyle = '#acfef8'; ctx.font = "italic 900 95px 'Rajdhani', sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle';
-                    ctx.fillText("CHUNTAVERSE", 512, 256);
+                if (validImages.length === 0) {
+                    canvas.width = 512; canvas.height = h;
+                    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, 512, h);
+                    ctx.fillStyle = '#222'; ctx.fillRect(20, 20, 472, h - 40);
+                    ctx.fillStyle = '#acfef8'; ctx.font = "italic bold 60px sans-serif";
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('CHUNTAVERSE', 256, h / 2 - 35);
+                    ctx.fillText('RANDOM RACE', 256, h / 2 + 35);
+                    const tex = new THREE.CanvasTexture(canvas);
+                    tex.userData = { aspect: 512 / h };
+                    callback(tex);
+                    return;
                 }
-                
+
+                const spacerW = h * 1.5;
+                let totalW = 0;
+                validImages.forEach(img => { totalW += h * (img.width / img.height) + spacerW; });
+
+                canvas.width = totalW;
+                canvas.height = h;
+                let x = 0;
+
+                validImages.forEach(img => {
+                    // 이미지 패널
+                    const w = h * (img.width / img.height);
+                    ctx.drawImage(img, x, 0, w, h);
+                    x += w;
+
+                    // 텍스트 패널 (완전히 분리된 영역)
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(x, 0, spacerW, h);
+                    ctx.fillStyle = '#222';
+                    ctx.fillRect(x + 20, 20, spacerW - 40, h - 40);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = "italic bold 60px sans-serif";
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('CHUNTAVERSE', x + spacerW / 2, h / 2 - 35);
+                    ctx.fillText('RANDOM RACE', x + spacerW / 2, h / 2 + 35);
+                    x += spacerW;
+                });
+
                 const texture = new THREE.CanvasTexture(canvas);
                 texture.generateMipmaps = true;
                 texture.minFilter = THREE.LinearMipmapLinearFilter;
+                texture.userData = { aspect: totalW / h };
                 callback(texture);
             }
         }
@@ -1108,28 +1113,25 @@
             createAdTexture((texture) => {
                 const laneCount = selectedMembers.size;
                 const trackWidth = laneCount * 6;
-                const totalTrackLength = trackLength + 200; // 시작점부터 결승선 너머까지
-                
+                const totalTrackLength = trackLength + 200;
+
                 const wallHeight = 5;
                 const wallGeom = new THREE.PlaneGeometry(totalTrackLength, wallHeight);
-                
+
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
-                
-                // 벽 길이에 맞게 텍스처 반복 설정
-                const aspect = texture.image.width / texture.image.height;
+
+                const aspect = texture.userData.aspect || (texture.image.width / texture.image.height);
                 const repeatX = totalTrackLength / (wallHeight * aspect);
                 texture.repeat.set(repeatX, 1);
-                
+
                 const wallMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.FrontSide });
-                
-                // 왼쪽 광고 벽
+
                 const leftWall = new THREE.Mesh(wallGeom, wallMat);
                 leftWall.position.set(-trackWidth / 2 - 4, wallHeight / 2, totalTrackLength / 2 - 100);
                 leftWall.rotation.y = Math.PI / 2;
                 scene.add(leftWall);
 
-                // 오른쪽 광고 벽
                 const rightWall = new THREE.Mesh(wallGeom, wallMat);
                 rightWall.position.set(trackWidth / 2 + 4, wallHeight / 2, totalTrackLength / 2 - 100);
                 rightWall.rotation.y = -Math.PI / 2;
