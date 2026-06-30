@@ -5,20 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>천타버스 랜덤 달리기</title>
     <link rel="icon" href="CRD.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:ital,wght@0,400;0,700;0,900;1,900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        /* ── CF1 Base ── */
+        :root { --theme-mint: #acfef8; --ea-dark: #0a0a0f; --ea-panel: rgba(20,20,25,0.85); --ea-border: rgba(255,255,255,0.15); }
+        body { font-family: 'Noto Sans KR', 'Segoe UI', sans-serif; background-color: var(--ea-dark); color: white; margin: 0; padding: 0; overflow-x: hidden; }
         .title-font { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: 800; }
-        * { border-radius: 0 !important; }
-
-        .member-card { transition: all 0.3s ease; }
-        .member-card.selected { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.5); }
-        .member-card:hover { transform: scale(1.02); }
-        .member-card img { transition: filter 0.3s ease; }
-        .member-card:not(.selected) img { filter: grayscale(100%); opacity: 0.7; }
-        .member-card.selected img { filter: grayscale(0%); opacity: 1; }
+        .ea-font { font-family: 'Rajdhani', 'Noto Sans KR', sans-serif; font-style: italic; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .ea-font-black { font-family: 'Noto Sans KR', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
+        * { border-radius: 0 !important; outline: none !important; }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.8); }
+        ::-webkit-scrollbar-thumb { background: var(--theme-mint); }
+        /* ── Menu Background ── */
+        .menu-bg { position: absolute; inset: 0; z-index: 0; background: radial-gradient(circle at 70% 30%, rgba(172,254,248,0.15) 0%, var(--ea-dark) 60%); pointer-events: none; }
+        .menu-bg::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px); pointer-events: none; }
+        /* ── Panel ── */
+        .ea-panel { background: linear-gradient(135deg, rgba(30,30,35,0.95) 0%, rgba(15,15,20,0.95) 100%); border: 1px solid var(--ea-border); backdrop-filter: blur(10px); box-shadow: 0 20px 40px rgba(0,0,0,0.5); position: relative; }
+        /* ── Buttons ── */
+        .ea-btn { background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--ea-border); transform: skewX(-15deg); transition: all 0.2s cubic-bezier(0.25,0.8,0.25,1); position: relative; overflow: hidden; cursor: pointer; }
+        .ea-btn > span { display: block; transform: skewX(15deg); }
+        .ea-btn:hover:not(:disabled) { background: white; color: black; border-color: white; box-shadow: 0 0 20px rgba(255,255,255,0.3); transform: skewX(-15deg) scale(1.02); }
+        .ea-btn:disabled { background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.3); cursor: not-allowed; }
+        .ea-btn-primary { background: var(--theme-mint); border-color: var(--theme-mint); color: var(--ea-dark); }
+        .ea-btn-primary:hover:not(:disabled) { background: #8de5dd; border-color: #8de5dd; color: var(--ea-dark); box-shadow: 0 0 30px rgba(172,254,248,0.5); }
+        /* ── Driver Cards ── */
+        .driver-card { background: #111; border: 1px solid var(--ea-border); position: relative; overflow: hidden; cursor: pointer; transition: all 0.3s cubic-bezier(0.25,0.8,0.25,1); aspect-ratio: 3/4; user-select: none; }
+        .driver-card img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 0.5s ease, filter 0.3s ease; filter: grayscale(100%) brightness(0.6); pointer-events: none; display: block; position: relative; z-index: 5; }
+        .driver-card .card-overlay { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 50%, transparent 100%); z-index: 10; pointer-events: none; }
+        .driver-card .card-info { position: absolute; bottom: 0; left: 0; width: 100%; padding: 12px; z-index: 20; transform: translateY(5px); transition: transform 0.3s ease; pointer-events: none; }
+        .driver-card:hover:not(.selected) img { transform: scale(1.05); filter: grayscale(50%) brightness(0.8); }
+        .driver-card:hover:not(.selected) .card-info { transform: translateY(0); }
+        .driver-card.selected { border-color: var(--theme-mint); box-shadow: 0 0 20px rgba(172,254,248,0.3); transform: translateY(-5px); }
+        .driver-card.selected img { filter: grayscale(0%) brightness(1.1); transform: scale(1.05); }
+        .driver-card.selected .card-info { transform: translateY(0); }
+        .driver-card.selected::after { content: ''; position: absolute; top: 0; right: 0; width: 30px; height: 30px; background: linear-gradient(225deg, var(--theme-mint) 50%, transparent 50%); z-index: 30; }
+        /* ── Number Buttons ── */
+        .num-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+        .num-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--ea-border); color: white; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; transition: all 0.2s; }
+        .num-btn:hover:not(:disabled) { background: rgba(255,255,255,0.2); }
+        .num-btn.selected { background: var(--theme-mint); border-color: var(--theme-mint); color: var(--ea-dark); font-weight: 900; box-shadow: 0 0 15px rgba(172,254,248,0.4); }
+        .num-btn:disabled { opacity: 0.2; cursor: not-allowed; }
 
         #gameCanvas { width: 100%; height: 100%; display: block; }
         @keyframes speedMove { from { transform: translateX(0); } to { transform: translateX(-51px); } }
@@ -55,8 +88,7 @@
         #countdownAlert { top: 8%; }
         #eventAlert { top: 8%; left: 50%; transform: translate(-50%, 0); }
         #gapAlert { bottom: 0; top: auto; left: 0; right: 0; width: 100%; }
-        #memberGrid .member-card img { object-position: bottom; }
-        .countdown-text { animation: countdownPulse 0.5s ease-out; }
+.countdown-text { animation: countdownPulse 0.5s ease-out; }
         @keyframes countdownPulse { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
         .sprint-effect { animation: sprintGlow 0.3s ease-in-out infinite alternate; }
         @keyframes sprintGlow {
@@ -79,51 +111,19 @@
             animation-duration: 0.02s;
         }
         @keyframes sprintLines { from { transform: translateX(0); } to { transform: translateX(-42px); } }
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8);
-            display: flex; align-items: center; justify-content: center; z-index: 9999;
-        }
-        .loading-spinner { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #3b82f6; animation: spin 1s linear infinite; }
+        .loading-overlay { position: fixed; inset: 0; background: var(--ea-dark); align-items: center; justify-content: center; z-index: 9999; }
+        .loading-overlay:not(.hidden) { display: flex !important; }
+        .loading-spinner { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.05); border-top-color: var(--theme-mint); animation: spin 1s linear infinite; border-radius: 50% !important; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .sprint-wind-effect { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 6; overflow: hidden; }
         .wind-line { position: absolute; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: windMove 0.3s linear infinite; }
         @keyframes windMove { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100vw); } }
-        .toggle-switch { position: relative; width: 56px; height: 28px; background: #4b5563; cursor: pointer; transition: background 0.3s ease; }
-        .toggle-switch.active { background: #5DFCE7; }
-        .toggle-switch .toggle-knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; background: white; transition: transform 0.3s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        .toggle-switch.active .toggle-knob { transform: translateX(28px); }
-        .divider-line { width: 1px; height: 48px; background: #4b5563; }
-        @keyframes needSelectPulse {
-            0%, 100% { box-shadow: 0 0 0 2px rgba(93,252,231,0.2); }
-            50% { box-shadow: 0 0 0 4px rgba(93,252,231,0.9), 0 0 20px rgba(93,252,231,0.45); }
-        }
-        @keyframes needPassPulse {
-            0%, 100% { box-shadow: 0 0 0 2px rgba(93,252,231,0.2); }
-            50% { box-shadow: 0 0 0 4px rgba(93,252,231,0.9), 0 0 20px rgba(93,252,231,0.45); }
-        }
-        .need-select-pulse { animation: needSelectPulse 1.4s ease-in-out infinite; }
-        .need-pass-pulse { animation: needPassPulse 1.4s ease-in-out infinite; }
-        .start-ready { animation: needSelectPulse 1.4s ease-in-out infinite; }
-        .pass-count-btn {
-            width: 36px; height: 36px; font-size: 15px; font-weight: bold;
-            background: #374151; border: 2px solid #4b5563; color: #9ca3af; cursor: pointer; transition: all 0.15s;
-        }
-        .pass-count-btn:disabled { background: #1F2937; border-color: #374151; color: #4b5563; cursor: default; }
-        .pass-count-btn:not(:disabled):hover { background: #4b5563; color: white; }
-        .pass-count-btn.selected { background: #4b5563; border-color: #9ca3af; color: white; }
-        #volumeControl {
-            position: absolute; top: 16px; right: 16px; z-index: 100; display: flex; align-items: center; gap: 8px;
-            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); padding: 8px 14px; pointer-events: auto;
-        }
-        #volumeControl button {
-            background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; padding: 2px;
-            display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; transition: background 0.2s;
-        }
+        #volumeControl { position: absolute; top: 16px; right: 16px; z-index: 100; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); padding: 8px 14px; pointer-events: auto; }
+        #volumeControl button { background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; padding: 2px; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; transition: background 0.2s; }
         #volumeControl button:hover { background: rgba(255,255,255,0.15); }
         #volumeSlider { -webkit-appearance: none; appearance: none; width: 100px; height: 6px; background: rgba(255,255,255,0.25); outline: none; cursor: pointer; }
-        #volumeSlider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #5DFCE7; cursor: pointer; box-shadow: 0 0 4px rgba(93,252,231,0.5); transition: transform 0.15s; }
-        #volumeSlider::-webkit-slider-thumb:hover { transform: scale(1.2); }
-        #volumeSlider::-moz-range-thumb { width: 16px; height: 16px; background: #5DFCE7; cursor: pointer; border: none; box-shadow: 0 0 4px rgba(93,252,231,0.5); }
+        #volumeSlider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--theme-mint); cursor: pointer; border-radius: 50% !important; }
+        #volumeSlider::-moz-range-thumb { width: 16px; height: 16px; background: var(--theme-mint); cursor: pointer; border: none; border-radius: 50% !important; }
 
         .sprint-split-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; overflow: hidden; }
         .split-left, .split-right { position: absolute; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); transition: transform 0.5s ease; }
@@ -201,55 +201,73 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
+<body>
 
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="text-center">
             <div class="loading-spinner mx-auto mb-4"></div>
-            <p class="text-white text-xl">이미지 로딩 중... <span id="loadingProgress">0/15</span></p>
+            <p class="text-white text-lg ea-font mt-4">LOADING... <span id="loadingProgress">0/15</span></p>
         </div>
     </div>
 
-    <div id="menuScreen" class="min-h-screen p-4">
-        <div class="max-w-6xl mx-auto">
-            <div class="flex justify-center mb-6">
-                <img src="CRD.webp" alt="천타버스 랜덤 달리기" class="h-36 object-contain">
-            </div>
-            
-            <div class="flex justify-center mb-6">
-                <div id="settingsBar" class="bg-gray-800 p-6 flex items-center gap-6" style="position:relative;">
-                    <div id="passCountHighlightBox" style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;"></div>
-                    <div id="passCountBox" class="flex items-center gap-3" style="position:relative;z-index:1;">
-                        <span class="text-xl font-bold">상위</span>
-                        <div id="passCountWrapper" style="display:grid;grid-template-columns:repeat(6,36px);gap:4px;"></div>
-                        <span class="text-xl font-bold">명 합격</span>
+    <div id="menuScreen" class="min-h-screen flex flex-col relative overflow-hidden">
+        <div class="menu-bg"></div>
+
+        <!-- Header -->
+        <header class="w-full py-6 px-8 flex items-center border-b z-10 relative" style="border-color:var(--ea-border);">
+            <img src="CRD.webp" alt="천타버스 랜덤 달리기" class="h-14 object-contain mr-6">
+            <h1 class="text-3xl text-white ea-font-black m-0 leading-none">천타버스 <span style="color:var(--theme-mint);">랜덤 달리기</span></h1>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col lg:flex-row gap-8 p-8 z-10 relative">
+
+            <!-- Left Panel -->
+            <div class="w-full lg:w-72 xl:w-80 flex-shrink-0 flex flex-col gap-4">
+                <div class="ea-panel p-6 flex flex-col gap-6">
+
+                    <!-- Pass Count -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="ea-font text-base text-white">합격 인원</span>
+                            <span id="qualifyText" class="ea-font-black text-lg" style="color:var(--theme-mint);">-</span>
+                        </div>
+                        <div id="passCountWrapper" class="num-grid"></div>
                     </div>
-                    <div id="innerDivider" class="divider-line"></div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-base whitespace-nowrap">막판 스퍼트</span>
-                        <div id="sprintToggle" class="toggle-switch active" onclick="toggleSprint()">
-                            <div class="toggle-knob"></div>
+
+                    <!-- Sprint Toggle -->
+                    <div>
+                        <span class="ea-font text-base text-white block mb-3">막판 스퍼트 (역전)</span>
+                        <div class="flex gap-2">
+                            <button id="sprintToggleBtnOn" class="ea-btn ea-btn-primary flex-1 py-2" onclick="toggleSprintSetting(true)"><span>켜기</span></button>
+                            <button id="sprintToggleBtnOff" class="ea-btn flex-1 py-2" onclick="toggleSprintSetting(false)"><span>끄기</span></button>
                         </div>
                     </div>
-                    <div class="divider-line"></div>
-                    <button id="startBtn" class="font-bold px-8 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 w-52" style="font-size:1.8rem;height:64px;line-height:1;background:#4B5563;color:white;" disabled>
-                        이미지 로딩 중...
-                    </button>
+
+                    <!-- Selection Buttons -->
+                    <div class="pt-4 flex flex-col gap-2" style="border-top:1px solid var(--ea-border);">
+                        <button id="selectAllBtn" class="ea-btn py-3 ea-font text-sm w-full"><span>전체 선택 / 해제</span></button>
+                        <button id="selectPassedBtn" class="ea-btn py-3 ea-font text-sm w-full hidden" style="color:#22c55e;border-color:#22c55e33;"><span>이전 합격자 선택</span></button>
+                        <button id="selectFailedBtn" class="ea-btn py-3 ea-font text-sm w-full hidden" style="color:#ef4444;border-color:#ef444433;"><span>이전 탈락자 선택</span></button>
+                    </div>
+
+                    <!-- Start -->
+                    <div class="pt-4" style="border-top:1px solid var(--ea-border);">
+                        <div class="flex justify-between text-sm mb-3 ea-font" style="color:rgba(255,255,255,0.5);">
+                            <span>선택된 러너</span>
+                            <span id="selectedCount" class="text-white font-bold">0 / 12</span>
+                        </div>
+                        <button id="startBtn" class="ea-btn ea-btn-primary w-full py-4 ea-font-black text-xl" disabled>
+                            <span>달리기 시작</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div id="memberSection" class="bg-gray-800 p-6 mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="flex items-center gap-4">
-                        <h2 class="text-2xl font-bold">참가 멤버 선택</h2>
-                        <p id="selectedCount" class="text-gray-400">선택된 멤버: 0명</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button id="selectPassedBtn" class="hidden font-normal px-6 py-2 transition" style="background:#384252;color:#22c55e;">이전경기 합격 인원 선택</button>
-                        <button id="selectFailedBtn" class="hidden font-normal px-6 py-2 transition" style="background:#384252;color:#ef4444;">이전경기 탈락 인원 선택</button>
-                        <button id="selectAllBtn" class="text-white font-normal px-6 py-2 transition" style="background:#374151;">전체 선택</button>
-                    </div>
-                </div>
-                <div id="memberGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+
+            <!-- Right: Member Grid -->
+            <div class="flex-1 flex flex-col min-w-0">
+                <h3 class="ea-font text-2xl text-white mb-4 m-0">출전 명단</h3>
+                <div id="memberGrid" class="grid gap-3" style="grid-template-columns:repeat(6,1fr);"></div>
             </div>
         </div>
     </div>
@@ -327,13 +345,13 @@
             { id: 3, name: '나나문', img: '03.jpg', imgPng: '03.webp', color: '#F4F6FF' },
             { id: 4, name: '임하밍', img: '04.jpg', imgPng: '04.webp', color: '#F8DBFF' },
             { id: 5, name: '문모모', img: '05.jpg', imgPng: '05.webp', color: '#A868FB' },
-            { id: 6, name: '한아밍', img: '06.jpg', imgPng: '06.webp', color: '#FEC0C2' },
+            { id: 6, name: '체비', img: '06.jpg', imgPng: '06.webp', color: '#d8d6dc' },
             { id: 7, name: '카푸', img: '07.jpg', imgPng: '07.webp', color: '#FFCFB7' },
             { id: 8, name: '캬앙', img: '08.jpg', imgPng: '08.webp', color: '#FF5A4D' },
             { id: 9, name: '김웰로', img: '09.jpg', imgPng: '09.webp', color: '#BFEF90' },
             { id: 10, name: '모카', img: '10.jpg', imgPng: '10.webp', color: '#5E8EFF' },
             { id: 11, name: '달타', img: '11.jpg', imgPng: '11.webp', color: '#FFC462' },
-            { id: 12, name: '파니', img: '12.jpg', imgPng: '12.webp', color: '#9FC5E8' }
+            { id: 12, name: '플리', img: '12.jpg', imgPng: '12.webp', color: '#b8e1f5' }
         ];
 
         const midBosses = [
@@ -383,10 +401,15 @@
             const toggle = document.getElementById('bossToggle');
             toggle && (bossEnabled ? toggle.classList.add('active') : toggle.classList.remove('active'));
         }
-        function toggleSprint() {
-            sprintEnabled = !sprintEnabled;
-            const toggle = document.getElementById('sprintToggle');
-            if (sprintEnabled) { toggle.classList.add('active'); } else { toggle.classList.remove('active'); }
+        function toggleSprintSetting(isOn) {
+            sprintEnabled = isOn;
+            const btnOn = document.getElementById('sprintToggleBtnOn');
+            const btnOff = document.getElementById('sprintToggleBtnOff');
+            if (isOn) {
+                btnOn.classList.add('ea-btn-primary'); btnOff.classList.remove('ea-btn-primary');
+            } else {
+                btnOff.classList.add('ea-btn-primary'); btnOn.classList.remove('ea-btn-primary');
+            }
         }
 
         function toggleMute() {
@@ -435,11 +458,11 @@
                     preloadedTextures[member.id] = texture;
                     loadedCount++; imagesLoaded = loadedCount;
                     loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
-                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
+                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartBtnState(); }
                 }, undefined, () => {
                     loadedCount++; imagesLoaded = loadedCount;
                     loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
-                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
+                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartBtnState(); }
                 });
             });
 
@@ -449,88 +472,64 @@
                     preloadedBossTextures[boss.id] = texture;
                     loadedCount++;
                     loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
-                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
+                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartBtnState(); }
                 }, undefined, () => {
                     loadedCount++;
                     loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
-                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
+                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartBtnState(); }
                 });
             });
         }
 
-        function updateStartButton() {
+        function updateStartBtnState() {
             const startBtn = document.getElementById('startBtn');
-            const memberSection = document.getElementById('memberSection');
-            const passCountBox = document.getElementById('passCountBox');
-            const hlBox = document.getElementById('passCountHighlightBox');
-            const innerDivider = document.getElementById('innerDivider');
-
-            // 강조 박스 (passCountBox 3면 테두리)
-            function setPassHighlight(on) {
-                if (!hlBox || !innerDivider) return;
-                if (on) {
-                    const divRect = innerDivider.getBoundingClientRect();
-                    const barRect = document.getElementById('settingsBar').getBoundingClientRect();
-                    const w = divRect.left + divRect.width / 2 - barRect.left;
-                    hlBox.style.cssText = `position:absolute;top:0;left:0;bottom:0;width:${w}px;pointer-events:none;animation:needSelectPulse 1.4s ease-in-out infinite;`;
-                } else {
-                    hlBox.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;';
-                }
-            }
-
             if (!allImagesLoaded) {
-                startBtn.disabled = true; startBtn.textContent = '이미지 로딩 중...'; startBtn.style.fontSize = '1.25rem'; startBtn.style.fontWeight = 'normal';
-                startBtn.classList.remove('start-ready');
-                memberSection && memberSection.classList.remove('need-select-pulse');
-                setPassHighlight(false);
+                startBtn.disabled = true;
+                startBtn.querySelector('span').textContent = '이미지 로딩 중...';
             } else if (selectedMembers.size < 2) {
-                startBtn.disabled = true; startBtn.textContent = '2명 이상 선택'; startBtn.style.fontSize = '1.25rem'; startBtn.style.fontWeight = 'normal';
-                startBtn.classList.remove('start-ready');
-                memberSection && memberSection.classList.add('need-select-pulse');
-                setPassHighlight(false);
+                startBtn.disabled = true;
+                startBtn.querySelector('span').textContent = '2명 이상 선택';
             } else if (passCount === null) {
-                startBtn.disabled = true; startBtn.textContent = '합격자 수 선택'; startBtn.style.fontSize = '1.25rem'; startBtn.style.fontWeight = 'normal';
-                startBtn.classList.remove('start-ready');
-                memberSection && memberSection.classList.remove('need-select-pulse');
-                setPassHighlight(true);
+                startBtn.disabled = true;
+                startBtn.querySelector('span').textContent = '합격자 수 선택';
             } else {
-                startBtn.disabled = false; startBtn.textContent = '경기 시작!'; startBtn.style.fontSize = '1.8rem'; startBtn.style.fontWeight = '600';
-                startBtn.classList.add('start-ready');
-                memberSection && memberSection.classList.remove('need-select-pulse');
-                setPassHighlight(false);
+                startBtn.disabled = false;
+                startBtn.querySelector('span').textContent = '달리기 시작';
             }
+        }
+
+        function createCard(m) {
+            const card = document.createElement('div');
+            card.className = 'driver-card';
+            card.dataset.id = m.id;
+            card.innerHTML = `
+                <div class="absolute inset-0" style="background:radial-gradient(circle at center 30%,${m.color}80 0%,#111 70%);z-index:1;"></div>
+                <img src="${m.imgPng}" alt="${m.name}">
+                <div class="card-overlay"></div>
+                <div class="card-info">
+                    <div style="width:24px;height:3px;background:${m.color};margin-bottom:4px;"></div>
+                    <div class="ea-font-black text-lg leading-none text-white truncate">${m.name}</div>
+                </div>
+            `;
+            card.addEventListener('click', () => toggleMember(m.id, card));
+            return card;
         }
 
         function createMemberGrid() {
             const grid = document.getElementById('memberGrid');
             grid.innerHTML = '';
-            members.forEach(member => {
-                const card = document.createElement('div');
-                card.className = 'member-card bg-gray-700 p-3 cursor-pointer border-2 border-transparent';
-                card.dataset.id = member.id;
-                card.innerHTML = `
-                    <div class="aspect-square overflow-hidden mb-2 relative">
-                        <img src="${member.imgPng}" alt="${member.name}" class="w-full h-full object-cover">
-                        <div class="absolute bottom-0 left-0 w-full h-1" style="background-color: ${member.color}"></div>
-                    </div>
-                    <div class="text-center font-bold text-sm" style="color: ${member.color}">${member.name}</div>
-                `;
-                card.addEventListener('click', () => toggleMember(member.id, card));
-                grid.appendChild(card);
-            });
+            members.forEach(m => grid.appendChild(createCard(m)));
         }
 
         function toggleMember(id, card) {
-            if (selectedMembers.has(id)) { selectedMembers.delete(id); card.classList.remove('selected', 'border-white'); }
-            else { selectedMembers.add(id); card.classList.add('selected', 'border-white'); }
+            if (selectedMembers.has(id)) { selectedMembers.delete(id); card.classList.remove('selected'); }
+            else { selectedMembers.add(id); card.classList.add('selected'); }
             passCount = null;
-            updateSelectedCount(); updateStartButton();
+            updateSelectionUI(); updateStartBtnState();
         }
 
-        function updateSelectedCount() {
-            document.getElementById('selectedCount').textContent = `선택된 멤버: ${selectedMembers.size}명`;
-            const allBtn = document.getElementById('selectAllBtn');
-            if (allBtn) allBtn.textContent = selectedMembers.size === members.length ? '선택 해제' : '전체 선택';
+        function updateSelectionUI() {
+            document.getElementById('selectedCount').textContent = `${selectedMembers.size} / ${members.length}`;
             renderPassButtons();
         }
 
@@ -540,57 +539,48 @@
             const maxPass = selectedMembers.size >= 2 ? Math.max(1, selectedMembers.size - 1) : 0;
             if (passCount !== null && (maxPass === 0 || passCount > maxPass)) passCount = null;
             wrapper.innerHTML = '';
-            wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;';
-            [[1,2,3,4,5,6],[7,8,9,10,11]].forEach(row => {
-                const rowDiv = document.createElement('div');
-                rowDiv.style.cssText = 'display:flex;gap:4px;';
-                row.forEach(n => {
-                    const btn = document.createElement('button');
-                    const isEnabled = n <= maxPass;
-                    btn.className = 'pass-count-btn' + (n === passCount ? ' selected' : '');
-                    btn.textContent = n;
-                    btn.disabled = !isEnabled;
-                    btn.style.opacity = isEnabled ? '1' : '0.3';
-                    btn.style.cursor = isEnabled ? 'pointer' : 'default';
-                    if (isEnabled) btn.onclick = () => { passCount = (passCount === n) ? null : n; renderPassButtons(); updateStartButton(); };
-                    rowDiv.appendChild(btn);
-                });
-                wrapper.appendChild(rowDiv);
-            });
+            wrapper.className = 'num-grid';
+            for (let n = 1; n <= 12; n++) {
+                const btn = document.createElement('button');
+                const isEnabled = n <= maxPass;
+                btn.className = 'num-btn' + (n === passCount ? ' selected' : '');
+                btn.textContent = n;
+                btn.disabled = !isEnabled;
+                if (isEnabled) btn.onclick = () => {
+                    passCount = (passCount === n) ? null : n;
+                    renderPassButtons();
+                    const qt = document.getElementById('qualifyText');
+                    if (qt) qt.textContent = passCount !== null ? `${passCount}명 합격` : '-';
+                    updateStartBtnState();
+                };
+                wrapper.appendChild(btn);
+            }
         }
 
         document.getElementById('selectAllBtn').addEventListener('click', () => {
-            const cards = document.querySelectorAll('.member-card');
-            if (selectedMembers.size === members.length) { selectedMembers.clear(); cards.forEach(card => card.classList.remove('selected', 'border-white')); }
-            else { members.forEach(m => selectedMembers.add(m.id)); cards.forEach(card => card.classList.add('selected', 'border-white')); }
-            passCount = null; updateSelectedCount(); updateStartButton();
-            document.getElementById('selectAllBtn').textContent = selectedMembers.size === members.length ? '선택 해제' : '전체 선택';
+            const cards = document.querySelectorAll('.driver-card');
+            if (selectedMembers.size === members.length) {
+                selectedMembers.clear();
+                cards.forEach(c => c.classList.remove('selected'));
+            } else {
+                members.forEach(m => selectedMembers.add(m.id));
+                cards.forEach(c => c.classList.add('selected'));
+            }
+            passCount = null; updateSelectionUI(); updateStartBtnState();
         });
 
         function applyPreviousSelection(targetIds) {
             selectedMembers.clear();
-            const cards = document.querySelectorAll('.member-card');
-            cards.forEach(card => {
+            document.querySelectorAll('.driver-card').forEach(card => {
                 const id = parseInt(card.dataset.id);
-                if (targetIds.has(id)) {
-                    selectedMembers.add(id);
-                    card.classList.add('selected', 'border-white');
-                } else {
-                    card.classList.remove('selected', 'border-white');
-                }
+                if (targetIds.has(id)) { selectedMembers.add(id); card.classList.add('selected'); }
+                else { card.classList.remove('selected'); }
             });
-            passCount = null; updateSelectedCount(); updateStartButton();
+            passCount = null; updateSelectionUI(); updateStartBtnState();
         }
 
-        document.getElementById('selectPassedBtn').addEventListener('click', () => {
-            applyPreviousSelection(lastRacePassedIds);
-        });
-
-        document.getElementById('selectFailedBtn').addEventListener('click', () => {
-            applyPreviousSelection(lastRaceFailedIds);
-        });
-
-        // passCount는 버튼 선택 방식으로 변경됨 (renderPassButtons)
+        document.getElementById('selectPassedBtn').addEventListener('click', () => applyPreviousSelection(lastRacePassedIds));
+        document.getElementById('selectFailedBtn').addEventListener('click', () => applyPreviousSelection(lastRaceFailedIds));
 
         document.getElementById('startBtn').addEventListener('click', () => {
             if (!allImagesLoaded) return;
@@ -620,12 +610,11 @@
         });
 
         document.getElementById('replayBtn').addEventListener('click', () => {
-            // 모든 선택 해제
             passCount = null;
             selectedMembers.clear();
-            document.querySelectorAll('.member-card').forEach(card => card.classList.remove('selected', 'border-white'));
-            updateSelectedCount();
-            updateStartButton();
+            document.querySelectorAll('.driver-card').forEach(card => card.classList.remove('selected'));
+            updateSelectionUI();
+            updateStartBtnState();
             stopBGM();
             document.getElementById('resultScreen').classList.add('hidden');
             document.getElementById('menuScreen').classList.remove('hidden');
@@ -2363,8 +2352,8 @@
 
         createMemberGrid();
         renderPassButtons();
-        updateSelectedCount();
-        updateStartButton();
+        updateSelectionUI();
+        updateStartBtnState();
         preloadImages();
     </script>
 </body>
