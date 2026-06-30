@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>천타버스 랜덤 달리기 & 그랑프리</title>
-    <link rel="icon" href="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD.png">
+    <link rel="icon" href="CRD.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:ital,wght@0,400;0,700;0,900;1,900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
@@ -257,7 +257,7 @@
         <div class="menu-bg"></div>
         <header class="w-full pt-8 pb-4 px-12 flex justify-between items-center border-b border-[rgba(255,255,255,0.1)]">
             <div class="flex items-center gap-6">
-                <img src="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD.webp" alt="CRD Logo" class="h-16 object-contain">
+                <img src="CRD.webp" alt="CRD Logo" class="h-16 object-contain">
                 <h1 class="text-4xl text-white ea-font-black m-0 leading-none">천타버스 <span class="text-[#acfef8]">랜덤 달리기</span></h1>
             </div>
             
@@ -385,7 +385,7 @@
 
         <div class="ranking-container" id="rankingContainer" style="opacity: 0; transition: opacity 0.5s;">
             <div id="rankingPanel" class="bg-black/75 p-3 w-max pointer-events-auto backdrop-blur-sm border border-[rgba(255,255,255,0.1)]">
-                <div class="mb-2 text-center"><img src="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD_A.webp" style="height:32px;object-fit:contain;margin:0 auto;"></div>
+                <div class="mb-2 text-center"><img src="CRD_A.webp" style="height:32px;object-fit:contain;margin:0 auto;"></div>
                 <div id="rankingList" class="space-y-1"></div>
             </div>
         </div>
@@ -412,7 +412,7 @@
                     <div class="text-[#acfef8] ea-font text-xl mb-1">공식 기록 (OFFICIAL RESULT)</div>
                     <h2 class="text-5xl text-white ea-font-black m-0">최종 달리기 결과</h2>
                 </div>
-                <img src="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD_A.webp" crossorigin="anonymous" class="h-10 object-contain hidden sm:block">
+                <img src="CRD_A.webp" class="h-10 object-contain hidden sm:block">
             </div>
             <div id="captureTarget" class="w-full flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10">
                 <div id="cfResultList"></div>
@@ -441,29 +441,26 @@
         // ==========================================
         // 1. Database & State Variables
         // ==========================================
-        const baseUrl = 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/';
+        const baseUrl = './';
         
         const membersChuntaverse = [
-            { id: 1, name: '천양', img: baseUrl + '01.webp', imgJpg: baseUrl + '01.webp', imgPng: baseUrl + '01.webp', color: '#43EAF6', isBoss: true },
-            { id: 2, name: '마다옴', img: baseUrl + '02.webp', imgJpg: baseUrl + '02.webp', imgPng: baseUrl + '02.webp', color: '#FFF5C3' },
-            { id: 3, name: '나나문', img: baseUrl + '03.webp', imgJpg: baseUrl + '03.webp', imgPng: baseUrl + '03.webp', color: '#F4F6FF' },
-            { id: 4, name: '임하밍', img: baseUrl + '04.webp', imgJpg: baseUrl + '04.webp', imgPng: baseUrl + '04.webp', color: '#F8DBFF' },
-            { id: 5, name: '문모모', img: baseUrl + '05.webp', imgJpg: baseUrl + '05.webp', imgPng: baseUrl + '05.webp', color: '#A868FB' },
-            { id: 7, name: '카푸', img: baseUrl + '07.webp', imgJpg: baseUrl + '07.webp', imgPng: baseUrl + '07.webp', color: '#FFCFB7' },
-            { id: 8, name: '캬앙', img: baseUrl + '08.webp', imgJpg: baseUrl + '08.webp', imgPng: baseUrl + '08.webp', color: '#FF5A4D' },
-            { id: 9, name: '김웰로', img: baseUrl + '09.webp', imgJpg: baseUrl + '09.webp', imgPng: baseUrl + '09.webp', color: '#BFEF90' },
-            { id: 10, name: '모카', img: baseUrl + '10.webp', imgJpg: baseUrl + '10.webp', imgPng: baseUrl + '10.webp', color: '#5E8EFF' },
-            { id: 11, name: '달타', img: baseUrl + '11.webp', imgJpg: baseUrl + '11.webp', imgPng: baseUrl + '11.webp', color: '#FFC462' }
+            { id: 1, name: '천양', imgWebp: '01.webp', imgJpg: '01.jpg', color: '#43EAF6',isBoss: true },
+            { id: 2, name: '마다옴', imgWebp: '02.webp', imgJpg: '02.jpg', color: '#FFF5C3' },
+            { id: 3, name: '나나문', imgWebp: '03.webp', imgJpg: '03.jpg', color: '#F4F6FF' },
+            { id: 4, name: '임하밍', imgWebp: '04.webp', imgJpg: '04.jpg', color: '#F8DBFF' },
+            { id: 5, name: '문모모', imgWebp: '05.webp', imgJpg: '05.jpg', color: '#A868FB' },
+            { id: 6, name: '체비', imgWebp: '06.webp', imgJpg: '06.jpg', color: '#d8d6dc' },
+            { id: 7, name: '카푸', imgWebp: '07.webp', imgJpg: '07.jpg', color: '#FFCFB7' },
+            { id: 8, name: '캬앙', imgWebp: '08.webp', imgJpg: '08.jpg', color: '#FF5A4D' },
+            { id: 9, name: '김웰로', imgWebp: '09.webp', imgJpg: '09.jpg', color: '#BFEF90' },
+            { id: 10, name: '모카', imgWebp: '10.webp', imgJpg: '10.jpg', color: '#5E8EFF' },
+            { id: 11, name: '달타', imgWebp: '11.webp', imgJpg: '11.jpg', color: '#FFC462' },
+            { id: 12, name: '플리', imgWebp: '12.webp', imgJpg: '12.jpg', color: '#b8e1f5' }
 
         ];
 
         const ALL_OTHER_MEMBERS = [
-            { id: 101, name: '난워니', img: 'guest/nanwony.png', imgJpg: 'guest/nanwony.png', imgPng: 'guest/nanwony.png', color: '#ffff00' },
-            { id: 102, name: '뢴트게늄', img: 'guest/roen.webp', imgJpg: 'guest/roen.webp', imgPng: 'guest/roen.webp', color: '#e5446e' },
-            { id: 103, name: '카나시', img: 'guest/kanasi.png', imgJpg: 'guest/kanasi.png', imgPng: 'guest/kanasi.png', color: '#ffd4c2' },
-            { id: 104, name: '최또', img: 'guest/choiddo.png', imgJpg: 'guest/choiddo.png', imgPng: 'guest/choiddo.png', color: '#f1c1c3' },
-            { id: 105, name: '나리', img: 'guest/nari.png', imgJpg: 'guest/nari.png', imgPng: 'guest/nari.png', color: '#1c1c1c' },
-            { id: 106, name: '돗챠', img: 'guest/dotcha.png', imgJpg: 'guest/dotcha.png', imgPng: 'guest/dotcha.png', color: '#f788be' }
+            
         ];
 
         const midBosses = [
@@ -744,7 +741,7 @@
             };
 
             toLoadMem.forEach(m => {
-                loader.load(m.img, tex => {
+                loader.load(m.imgWebp || m.imgJpg || m.img, tex => {
                     tex.generateMipmaps = true;
                     tex.minFilter = THREE.LinearMipmapLinearFilter;
                     tex.magFilter = THREE.LinearFilter;
@@ -779,10 +776,10 @@
             card.ondragstart = (e) => { e.dataTransfer.setData('text/plain', m.id); e.target.style.opacity = '0.5'; };
             card.ondragend = (e) => { e.target.style.opacity = '1'; };
             
-            const imgUrl = m.imgPng || m.img || 'logo2.png';
+            const imgUrl = m.imgWebp || m.imgJpg || m.imgPng || m.img || '';
             card.innerHTML = `
                 <div class="absolute inset-0" style="background: radial-gradient(circle at center 30%, ${m.color}80 0%, #111 70%); z-index: 1;"></div>
-                <img src="${imgUrl}" crossorigin="anonymous" alt="${m.name}" style="position: relative; z-index: 5; pointer-events: none;" onerror="this.onerror=null; this.src='logo2.png';">
+                <img src="${imgUrl}" alt="${m.name}" style="position: relative; z-index: 5; pointer-events: none;">
                 <div class="card-overlay" style="z-index: 10;"></div>
                 <div class="card-info" style="z-index: 20;">
                     <div class="w-6 h-1 mb-1" style="background-color: ${m.color}"></div>
@@ -971,7 +968,7 @@
             document.getElementById('midbossAlert').classList.add('hidden');
             
             if (bgm) { bgm.pause(); bgm.currentTime = 0; bgm = null; }
-            bgm = new Audio('https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/chuntaverse.mp3');
+            bgm = new Audio('chuntaverse.mp3');
             bgm.volume = isMuted ? 0 : currentVolume; bgm.load();
             const playPromise = bgm.play();
             if (playPromise !== undefined) {
@@ -1648,7 +1645,7 @@
                     d.className = baseClasses + (isQ ? 'bg-green-900/40 ' : 'bg-[rgba(255,255,255,0.05)] ') + confCls;
                 }
 
-                d.innerHTML = `<span class="w-6 text-center font-bold text-sm" style="color:${r.member.color}">${rank}</span><img src="${r.member.imgPng||r.member.img}" crossorigin="anonymous" class="w-6 h-6 rounded-full object-cover"><span class="text-xs font-bold truncate" style="color:${r.member.color}">${r.member.name}</span><span style="width:0.5em;"></span>`;
+                d.innerHTML = `<span class="w-6 text-center font-bold text-sm" style="color:${r.member.color}">${rank}</span><img src="${r.member.imgWebp||r.member.imgJpg||r.member.img||''}" class="w-6 h-6 rounded-full object-cover"><span class="text-xs font-bold truncate" style="color:${r.member.color}">${r.member.name}</span><span style="width:0.5em;"></span>`;
                 rL.appendChild(d);
             });
         }
@@ -1765,7 +1762,7 @@
                     item.innerHTML = `
                         <div class="w-12 text-center text-2xl ea-font-black text-white">${r.finalRank}</div>
                         <div class="w-12 h-12 bg-gray-800 border-2 overflow-hidden relative" style="border-color:${r.member.color}; border-radius:50% !important;">
-                            <img src="${r.member.imgPng||r.member.img}" crossorigin="anonymous" class="w-full h-full object-cover">
+                            <img src="${r.member.imgWebp||r.member.imgJpg||r.member.img||''}" class="w-full h-full object-cover">
                         </div>
                         <div class="flex-1 min-w-0 flex flex-col justify-center">
                             <div class="text-xl ea-font-black truncate ${(!isTeamMode && !r.isQualified) ? 'text-gray-400':'text-white'}">${r.member.name}</div>
