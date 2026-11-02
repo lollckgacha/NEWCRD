@@ -196,6 +196,11 @@
         .midboss-subtitle {
             font-size: 2rem; font-weight: bold; color: #fbbf24;
         }
+        #cheondanCinematic { position: absolute; inset: 0; z-index: 54; pointer-events: none; background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.55) 100%); }
+        #cheondanCinematic::before, #cheondanCinematic::after { content: ''; position: absolute; left: 0; right: 0; height: 8%; background: #050508; }
+        #cheondanCinematic::before { top: 0; }
+        #cheondanCinematic::after { bottom: 0; }
+        #cheondanImpact { position: absolute; inset: 0; z-index: 56; pointer-events: none; background: white; opacity: 0; }
 
         .lightning-flash {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 55;
@@ -308,6 +313,8 @@
                 <div class="midboss-subtitle"></div>
             </div>
             <div id="lightningFlash" class="lightning-flash hidden"></div>
+            <div id="cheondanCinematic" class="hidden"></div>
+            <div id="cheondanImpact"></div>
         </div>
 
         <div id="volumeControl">
@@ -349,6 +356,127 @@
     </div>
 
     <script>
+        // RAF paints visible pages; a worker clock keeps game callbacks alive in hidden tabs.
+        const gameScheduler = (() => {
+            const frames = new Map();
+            const timers = new Map();
+            let nextId = 1;
+            let generation = 0;
+            let raf = null;
+            let fallbackTimer = null;
+            let worker = null;
+            let workerStarted = false;
+            let workerFailed = false;
+
+            function stopClock() {
+                if (raf !== null) cancelAnimationFrame(raf);
+                if (fallbackTimer !== null) clearTimeout(fallbackTimer);
+                raf = null;
+                fallbackTimer = null;
+                if (worker && workerStarted) worker.postMessage('stop');
+                workerStarted = false;
+            }
+
+            function getWorker() {
+                if (worker || workerFailed) return worker;
+                let url;
+                try {
+                    const code = `
+                        let timer = null;
+                        onmessage = ({ data }) => {
+                            if (timer !== null) clearInterval(timer);
+                            timer = data === 'start' ? setInterval(() => postMessage('tick'), 1000 / 30) : null;
+                        };
+                    `;
+                    url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+                    worker = new Worker(url);
+                    worker.onmessage = () => { if (document.hidden) pump(performance.now()); };
+                    worker.onerror = () => {
+                        worker.terminate();
+                        worker = null;
+                        workerStarted = false;
+                        workerFailed = true;
+                        arm();
+                    };
+                } catch (error) {
+                    workerFailed = true;
+                    worker = null;
+                } finally {
+                    if (url) URL.revokeObjectURL(url);
+                }
+                return worker;
+            }
+
+            function arm() {
+                if (frames.size === 0 && timers.size === 0) {
+                    stopClock();
+                    return;
+                }
+                if (document.hidden) {
+                    if (raf !== null) cancelAnimationFrame(raf);
+                    raf = null;
+                    const clockWorker = getWorker();
+                    if (clockWorker) {
+                        if (!workerStarted) clockWorker.postMessage('start');
+                        workerStarted = true;
+                    } else if (fallbackTimer === null) {
+                        fallbackTimer = setTimeout(() => { fallbackTimer = null; pump(performance.now()); }, 33);
+                    }
+                } else {
+                    if (worker && workerStarted) worker.postMessage('stop');
+                    workerStarted = false;
+                    if (fallbackTimer !== null) clearTimeout(fallbackTimer);
+                    fallbackTimer = null;
+                    if (raf === null) raf = requestAnimationFrame(pump);
+                }
+            }
+
+            function pump(now) {
+                raf = null;
+                const epoch = generation;
+                const callbacks = Array.from(frames.values());
+                frames.clear();
+                const due = Array.from(timers.entries())
+                    .filter(([, timer]) => timer.due <= now)
+                    .sort((a, b) => a[1].due - b[1].due || a[0] - b[0]);
+                try {
+                    for (const [id, timer] of due) {
+                        if (generation !== epoch) return;
+                        if (!timers.delete(id)) continue;
+                        timer.callback();
+                    }
+                    for (const callback of callbacks) {
+                        if (generation !== epoch) return;
+                        callback(now);
+                    }
+                } finally {
+                    arm();
+                }
+            }
+
+            document.addEventListener('visibilitychange', arm);
+            return {
+                requestFrame(callback) {
+                    const id = nextId++;
+                    frames.set(id, callback);
+                    arm();
+                    return id;
+                },
+                setTimer(callback, delay = 0) {
+                    const id = nextId++;
+                    timers.set(id, { callback, due: performance.now() + Math.max(0, delay) });
+                    arm();
+                    return id;
+                },
+                reset() {
+                    generation++;
+                    frames.clear();
+                    timers.clear();
+                    stopClock();
+                }
+            };
+        })();
+
         const members = [
             { id: 1, name: '천양', img: '01.webp', imgPng: '01.webp', color: '#43EAF6', isBoss: true },
             { id: 2, name: '마다옴', img: '02.webp', imgPng: '02.webp', color: '#FFF5C3' },
@@ -686,6 +814,7 @@
         document.getElementById('captureBtn').addEventListener('click', captureResults);
 
         document.getElementById('replayBtn').addEventListener('click', () => {
+            gameScheduler.reset();
             passCount = null;
             selectedMembers.clear();
             document.querySelectorAll('.driver-card').forEach(card => card.classList.remove('selected'));
@@ -768,6 +897,8 @@
         }
 
         function startGame() {
+            gameScheduler.reset();
+            simulationDebt = 0;
             finishedRunners = []; ultimateUsed = false; ultimateActive = false; confirmedRanks = new Set();
             sprintCameraFocus = null;
             gameTime = 0; slowMotion = false; slowMotionFactor = 1; currentCameraMode = 'overview';
@@ -794,6 +925,8 @@
             document.getElementById('midbossSplitOverlay').classList.remove('active');
             document.getElementById('midbossCharacterDisplay').classList.remove('active');
             document.getElementById('midbossAlert').classList.add('hidden');
+            document.getElementById('cheondanCinematic').classList.add('hidden');
+            document.getElementById('cheondanImpact').style.opacity = '0';
             
             document.getElementById('midbossCharacterImage').src = '';
             document.getElementById('sprintCharacterImage').src = '';
@@ -853,9 +986,9 @@
             const startPos = new THREE.Vector3(startX - 6, 6, 8);
             camera.position.copy(startPos); camera.lookAt(startX, 2, 0);
             camera.lookAtVector = new THREE.Vector3(startX, 2, 0);
-            renderer.render(scene, camera);
+            renderGameFrame();
 
-            setTimeout(() => {
+            gameScheduler.setTimer(() => {
                 const endX = -trackWidth / 2 + laneWidth / 2 + (laneCount - 1) * laneWidth;
                 const endPos = new THREE.Vector3(endX - 6, 6, 8);
                 const endLookAt = new THREE.Vector3(endX, 2, 0);
@@ -869,9 +1002,9 @@
                     camera.position.lerpVectors(startPos, endPos, ease);
                     const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, endLookAt, ease);
                     camera.lookAtVector = currentLookAt; camera.lookAt(currentLookAt);
-                    renderer.render(scene, camera);
-                    if (progress < 1) requestAnimationFrame(animateSweep);
-                    else setTimeout(() => { showFullStartingLine(trackWidth, laneWidth, laneCount); }, 500);
+                    renderGameFrame();
+                    if (progress < 1) gameScheduler.requestFrame(animateSweep);
+                    else gameScheduler.setTimer(() => { showFullStartingLine(trackWidth, laneWidth, laneCount); }, 500);
                 }
                 animateSweep();
             }, 500);
@@ -891,8 +1024,8 @@
                 camera.position.lerpVectors(startPos, endPos, ease);
                 const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, endLookAt, ease);
                 camera.lookAtVector = currentLookAt; camera.lookAt(currentLookAt);
-                renderer.render(scene, camera);
-                if (progress < 1) requestAnimationFrame(animateToFullView);
+                renderGameFrame();
+                if (progress < 1) gameScheduler.requestFrame(animateToFullView);
                 else startCountdown();
             }
             animateToFullView();
@@ -904,19 +1037,19 @@
             countdownAlert.classList.remove('hidden');
             countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
             countdownDiv.textContent = '제자리에'; countdownDiv.style.color = '#ffffff'; countdownDiv.style.textShadow = 'none';
-            setTimeout(() => {
+            gameScheduler.setTimer(() => {
                 countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
                 countdownDiv.textContent = '준비'; countdownDiv.style.color = '#ffffff'; countdownDiv.style.textShadow = 'none';
             }, 1000);
-            setTimeout(() => {
+            gameScheduler.setTimer(() => {
                 countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
                 countdownDiv.textContent = '출발!'; countdownDiv.style.color = '#22c55e';
                 countdownDiv.style.textShadow = 'none';
                 startingSequence = false; raceStarted = true;
                 document.getElementById('rankingContainer').style.opacity = '1';
-                lastTime = null; requestAnimationFrame(animate);
+                lastTime = performance.now(); gameScheduler.requestFrame(animate);
             }, 3000);
-            setTimeout(() => { countdownAlert.classList.add('hidden'); }, 3500);
+            gameScheduler.setTimer(() => { countdownAlert.classList.add('hidden'); }, 3500);
         }
 
         function initThreeJS() {
@@ -1301,10 +1434,17 @@
             runner.hurdleFailTimer = 0;
             runner.jumpHeight = 0;
             finishBossFlight = {
-                runner, elapsed: 0, duration: 1.4,
+                runner, elapsed: 0, phase: 'zoom',
+                zoomDuration: 0.85, holdDuration: 0.45, impactDuration: 0.14,
+                flightDuration: 2.4, landingDuration: 0.65,
                 startPosition: runner.position, startY: runner.mesh.position.y,
-                targetPosition: Math.min(...others.map(other => other.position)) - 12
+                targetPosition: Math.min(...others.map(other => other.position)) - 12,
+                originalFov: camera.fov,
+                cameraStart: camera.position.clone(), lookAtStart: camera.lookAtVector.clone(),
+                closeup: new THREE.Vector3(runner.laneX + 3.7, runner.mesh.position.y + 3.3, runner.position + 7.5),
+                closeupLookAt: new THREE.Vector3(runner.laneX, runner.mesh.position.y + 1.7, runner.position)
             };
+            document.getElementById('cheondanCinematic').classList.remove('hidden');
             const alert = document.getElementById('midbossAlert');
             alert.querySelector('div').textContent = `천단: ${runner.member.name}, 꺼져 그냥`;
             alert.classList.remove('hidden');
@@ -1314,22 +1454,72 @@
             const flight = finishBossFlight;
             if (!flight) return;
             flight.elapsed += delta;
-            const progress = Math.min(flight.elapsed / flight.duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
             const runner = flight.runner;
-            runner.position = flight.startPosition + (flight.targetPosition - flight.startPosition) * eased;
-            const height = flight.startY * (1 - progress) + Math.sin(progress * Math.PI) * 6;
-            runner.mesh.position.set(runner.laneX, height, runner.position);
-            runner.mesh.rotation.x = Math.sin(progress * Math.PI * 4) * 0.5 * (1 - progress);
-            runner.mesh.rotation.z = Math.sin(progress * Math.PI * 6) * 0.6 * (1 - progress);
-            runner.nameMesh.position.z = runner.position - 8;
+            const zoomEnd = flight.zoomDuration;
+            const holdEnd = zoomEnd + flight.holdDuration;
+            const impactEnd = holdEnd + flight.impactDuration;
+            const flightEnd = impactEnd + flight.flightDuration;
+            const end = flightEnd + flight.landingDuration;
+            const smooth = value => value * value * (3 - 2 * value);
+            let fov = 38;
             camera.up.set(0, 1, 0);
-            camera.position.set(runner.laneX + 5, height + 5, runner.position + 10);
-            camera.lookAtVector.set(runner.laneX, height + 1.5, runner.position);
-            camera.lookAt(camera.lookAtVector);
-            if (progress >= 1) {
-                runner.mesh.position.y = 0;
+            const impact = document.getElementById('cheondanImpact');
+            impact.style.opacity = '0';
+
+            if (flight.elapsed < zoomEnd) {
+                flight.phase = 'zoom';
+                const progress = smooth(flight.elapsed / zoomEnd);
+                camera.position.lerpVectors(flight.cameraStart, flight.closeup, progress);
+                camera.lookAtVector.lerpVectors(flight.lookAtStart, flight.closeupLookAt, progress);
+                fov = flight.originalFov + (38 - flight.originalFov) * progress;
+            } else if (flight.elapsed < holdEnd) {
+                flight.phase = 'hold';
+                const progress = (flight.elapsed - zoomEnd) / flight.holdDuration;
+                camera.position.copy(flight.closeup);
+                camera.position.z -= progress * 0.3;
+                camera.lookAtVector.copy(flight.closeupLookAt);
+            } else if (flight.elapsed < impactEnd) {
+                flight.phase = 'impact';
+                const progress = (flight.elapsed - holdEnd) / flight.impactDuration;
+                const shake = Math.sin(progress * Math.PI * 6) * 0.1 * (1 - progress);
+                camera.position.set(flight.closeup.x + shake, flight.closeup.y, flight.closeup.z - 0.3);
+                camera.lookAtVector.copy(flight.closeupLookAt);
+                impact.style.opacity = String(0.45 * (1 - progress));
+            } else if (flight.elapsed < flightEnd) {
+                flight.phase = 'flight';
+                const progress = (flight.elapsed - impactEnd) / flight.flightDuration;
+                const eased = 1 - Math.pow(1 - progress, 3);
+                runner.position = flight.startPosition + (flight.targetPosition - flight.startPosition) * eased;
+                const height = flight.startY * (1 - progress) + Math.sin(progress * Math.PI) * 10;
+                runner.mesh.position.set(runner.laneX, height, runner.position);
+                runner.mesh.rotation.x = -Math.PI * 2 * smooth(progress);
+                runner.mesh.rotation.z = Math.sin(progress * Math.PI) * 1.1;
+                // Pull back from the close-up and track the airborne runner throughout the throw.
+                const pullback = smooth(Math.min(progress / 0.3, 1));
+                camera.position.set(runner.laneX + 3.7 + 11.3 * pullback,
+                    height + 3.3 + 4.7 * pullback, runner.position + 7.2 + 14.8 * pullback);
+                camera.lookAtVector.set(runner.laneX, height + 1.7, runner.position);
+                fov = 38 + 18 * pullback;
+            } else {
+                flight.phase = 'landing';
+                const progress = Math.min((flight.elapsed - flightEnd) / flight.landingDuration, 1);
+                runner.position = flight.targetPosition;
+                runner.mesh.position.set(runner.laneX, 0, runner.position);
                 runner.mesh.rotation.set(0, 0, 0);
+                const shake = Math.sin(progress * Math.PI * 8) * 0.12 * (1 - progress);
+                camera.position.set(runner.laneX + 15 + shake, 8, runner.position + 22);
+                camera.lookAtVector.set(runner.laneX, 1.7, runner.position);
+                fov = 56 + (flight.originalFov - 56) * smooth(progress);
+                document.getElementById('midbossAlert').querySelector('div').textContent =
+                    `${runner.member.name}  1위 → ${runners.length}위`;
+            }
+            runner.nameMesh.position.z = runner.position - 8;
+            if (Math.abs(camera.fov - fov) > 0.001) {
+                camera.fov = fov;
+                camera.updateProjectionMatrix();
+            }
+            camera.lookAt(camera.lookAtVector);
+            if (flight.elapsed >= end) {
                 runner.isPushedBack = false;
                 document.getElementById('midbossAlert').classList.add('hidden');
                 prevCameraMode = 'cheondan';
@@ -1383,7 +1573,7 @@
 
             if (bgm) bgm.volume = bgm.volume * 0.3;
 
-            setTimeout(() => {
+            gameScheduler.setTimer(() => {
                 activateMidBossEffect();
             }, 3000);
         }
@@ -1471,10 +1661,10 @@
                     const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, closeupLookAt, progress);
                     camera.lookAtVector = currentLookAt;
                     camera.lookAt(currentLookAt);
-                    renderer.render(scene, camera);
+                    renderGameFrame();
 
                     if (progress < 1) {
-                        requestAnimationFrame(animateCloseup);
+                        gameScheduler.requestFrame(animateCloseup);
                     } else {
                         const pushDistance = 15 + Math.random() * 10;
                         const targetPosition = Math.max(0, runner.position - pushDistance);
@@ -1502,18 +1692,18 @@
                             camera.lookAt(newLookAt);
                             camera.position.z = runner.position + 8;
                             
-                            renderer.render(scene, camera);
+                            renderGameFrame();
                             
                             if (progress < 1) {
-                                requestAnimationFrame(animatePushBack);
+                                gameScheduler.requestFrame(animatePushBack);
                             } else {
                                 runner.isPushedBack = false;
                                 runner.mesh.rotation.z = 0;
                                 
-                                setTimeout(() => {
+                                gameScheduler.setTimer(() => {
                                     midbossAlert.classList.add('hidden');
                                     pushIndex++;
-                                    setTimeout(pushNextRunner, 500);
+                                    gameScheduler.setTimer(pushNextRunner, 500);
                                 }, 500);
                             }
                         }
@@ -1543,7 +1733,7 @@
             midbossAlert.classList.remove('hidden');
 
             Promise.all(targetRunners.map(runner => pourLiquidAndShield(runner))).then(() => {
-                setTimeout(() => {
+                gameScheduler.setTimer(() => {
                     midbossAlert.classList.add('hidden');
                     finishMidBossEvent();
                 }, 1000);
@@ -1579,10 +1769,10 @@
 
                     const currentLength = totalDist * ease;
                     stream.scale.set(1, currentLength, 1);
-                    renderer.render(scene, camera);
+                    renderGameFrame();
 
                     if (p < 1) {
-                        requestAnimationFrame(animatePour);
+                        gameScheduler.requestFrame(animatePour);
                     } else {
                         createSplashEffect(runner, liquidColor);
                         createShield(runner);
@@ -1594,10 +1784,10 @@
                             const fp = Math.min((performance.now() - fadeStart) / fadeDuration, 1);
                             stream.material.opacity = 0.8 * (1 - fp);
                             stream.scale.set(1 - fp * 0.8, totalDist, 1 - fp * 0.8);
-                            renderer.render(scene, camera);
+                            renderGameFrame();
                             
                             if (fp < 1) {
-                                requestAnimationFrame(animateFade);
+                                gameScheduler.requestFrame(animateFade);
                             } else {
                                 runner.mesh.remove(stream);
                                 stream.geometry.dispose();
@@ -1640,7 +1830,7 @@
                     mesh.scale.setScalar(1 - p);
                     
                     if (p < 1) {
-                        requestAnimationFrame(animateParticle);
+                        gameScheduler.requestFrame(animateParticle);
                     } else {
                         runner.mesh.remove(mesh);
                     }
@@ -1679,8 +1869,8 @@
                     const s = p < 1 ? p * 1.1 : 1; 
                     const elastic = p === 1 ? 1 : 1 - Math.pow(2, -10 * p) * Math.cos((p * 10) * Math.PI / 3);
                     shieldMesh.scale.set(elastic, elastic, elastic);
-                    renderer.render(scene, camera);
-                    if (p < 1) requestAnimationFrame(animateShield);
+                    renderGameFrame();
+                    if (p < 1) gameScheduler.requestFrame(animateShield);
                 }
                 animateShield();
             }
@@ -1698,7 +1888,7 @@
 
             const flash = document.getElementById('lightningFlash');
             flash.classList.remove('hidden');
-            setTimeout(() => flash.classList.add('hidden'), 100);
+            gameScheduler.setTimer(() => flash.classList.add('hidden'), 100);
 
             const midbossAlert = document.getElementById('midbossAlert');
             midbossAlert.querySelector('div').innerHTML = `<span style="color: ${immuneRunner.member.color};">${immuneRunner.member.name}</span>&nbsp;<span style="color: #d1d5db;">제외 전원 감전!</span>`;
@@ -1709,10 +1899,10 @@
                 runner.electrocuteTimer = 2.0;
 
                 createLightningEffectFlipped(runner);
-                setTimeout(() => { if (runner.isElectrocuted) createElectroAura(runner); }, 1500);
+                gameScheduler.setTimer(() => { if (runner.isElectrocuted) createElectroAura(runner); }, 1500);
             });
 
-            setTimeout(() => {
+            gameScheduler.setTimer(() => {
                 midbossAlert.classList.add('hidden');
                 finishMidBossEvent();
             }, 2000);
@@ -1731,7 +1921,7 @@
                 const scale = 1 + p * 1.5;
                 sphere.scale.set(scale, scale, scale);
                 sphere.material.opacity = 0.25 * (1 - p);
-                if (p < 1) requestAnimationFrame(animatePop);
+                if (p < 1) gameScheduler.requestFrame(animatePop);
                 else {
                     runner.mesh.remove(sphere);
                     sphere.geometry.dispose();
@@ -1818,7 +2008,7 @@
                     const fadeP = (p - 0.5) / 0.5;
                     strikeGroup.children.forEach(child => { child.material.opacity = child.material.opacity * (1 - fadeP * 0.06); });
                 }
-                if (p < 1) requestAnimationFrame(animateStrike);
+                if (p < 1) gameScheduler.requestFrame(animateStrike);
                 else { scene.remove(strikeGroup); strikeGroup.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
             }
             animateStrike();
@@ -1828,6 +2018,12 @@
         }
 
         function finishMidBossEvent() {
+            if (finishBossFlight) {
+                camera.fov = finishBossFlight.originalFov;
+                camera.updateProjectionMatrix();
+            }
+            document.getElementById('cheondanCinematic').classList.add('hidden');
+            document.getElementById('cheondanImpact').style.opacity = '0';
             midBossActive = false;
             isPaused = false;
             finishBossFlight = null;
@@ -1929,7 +2125,7 @@
             characterDisplay.classList.add('active');
 
 
-            setTimeout(() => {
+            gameScheduler.setTimer(() => {
                 isPaused = false;
                 document.getElementById('sprintSplitOverlay').classList.remove('active');
                 document.getElementById('sprintCharacterDisplay').classList.remove('active');
@@ -2480,7 +2676,7 @@
             if (!firstFailRunner) { gameRunning = false; showResults(); return; }
             gapMode = true; gapRunnerA = lastPassRunner; gapRunnerB = firstFailRunner;
             createGapVisuals(lastPassRunner, firstFailRunner);
-            setTimeout(() => { gameRunning = false; document.getElementById('gapAlert').classList.add('hidden'); showResults(); }, 4000);
+            gameScheduler.setTimer(() => { gameRunning = false; document.getElementById('gapAlert').classList.add('hidden'); showResults(); }, 4000);
         }
 
         function checkGameEnd() {
@@ -2589,34 +2785,47 @@
         }
 
         let lastTime = null;
-        function animate(currentTime = 0) {
+        let simulationDebt = 0;
+
+        function renderGameFrame() {
+            if (!document.hidden && renderer && scene && camera) renderer.render(scene, camera);
+        }
+
+        function animate(currentTime = performance.now()) {
             if (!gameRunning) return;
-            const delta = lastTime === null ? 0 : Math.max(0, Math.min((currentTime - lastTime) / 1000, 0.1));
+            const delta = lastTime === null ? 0 : Math.max(0, (currentTime - lastTime) / 1000);
             lastTime = currentTime;
-            
-            checkMidBossEvent();
-            checkFinishBossEvent();
-            updateFinishBossFlight(delta);
-            
-            updateRunners(delta); updateCamera(delta);
-            // Keep motion at display refresh rate; refresh text at 10 Hz.
+            simulationDebt += delta;
+            // Keep all elapsed time and use small steps so delayed ticks cannot skip obstacles or the finish event.
+            let steps = 0;
+            while (simulationDebt > 0.000001 && steps < 240 && gameRunning) {
+                const step = Math.min(simulationDebt, 1 / 60);
+                checkMidBossEvent();
+                checkFinishBossEvent();
+                updateFinishBossFlight(step);
+                updateRunners(step);
+                checkGameEnd();
+                simulationDebt -= step;
+                steps++;
+            }
+            updateCamera(delta);
             hudElapsed += delta;
-            if (hudElapsed >= 0.1) {
+            if (!document.hidden && hudElapsed >= 0.1) {
                 hudElapsed %= 0.1;
                 updateRankingPanel(); updateNameSubtitles();
             }
-            const gravelTime = gameTime * 2;
-            obstacles.forEach(obs => { if (obs.type === 'gravel') obs.mesh.rotation.z = Math.sin(gravelTime) * 0.05; });
-
-            // 그림자 카메라를 선두 러너 위치에 맞춰 업데이트
-            if (window._dirLight && runners.length > 0) {
-                const leaderZ = runners.reduce((max, r) => Math.max(max, r.position), 0);
-                window._dirLight.position.set(50, 100, leaderZ + 50);
-                window._dirLight.target.position.set(0, 0, leaderZ);
-                window._dirLight.target.updateMatrixWorld();
+            if (!document.hidden) {
+                const gravelTime = gameTime * 2;
+                obstacles.forEach(obs => { if (obs.type === 'gravel') obs.mesh.rotation.z = Math.sin(gravelTime) * 0.05; });
+                if (window._dirLight && runners.length > 0) {
+                    const leaderZ = runners.reduce((max, r) => Math.max(max, r.position), 0);
+                    window._dirLight.position.set(50, 100, leaderZ + 50);
+                    window._dirLight.target.position.set(0, 0, leaderZ);
+                    window._dirLight.target.updateMatrixWorld();
+                }
+                renderGameFrame();
             }
-
-            checkGameEnd(); renderer.render(scene, camera); requestAnimationFrame(animate);
+            if (gameRunning) gameScheduler.requestFrame(animate);
         }
 
         createMemberGrid();
