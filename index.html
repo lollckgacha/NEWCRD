@@ -1416,7 +1416,7 @@
             if (leader.position < trackLength - 10) return;
             // Roll once per race, before the first runner crosses the finish line.
             finishBossChecked = true;
-            if (Math.random() < 0.75) triggerMidBossEvent(finishBoss, leader);
+            if (Math.random() < 1) triggerMidBossEvent(finishBoss, leader);
         }
 
         function executeCheondanEffect() {
